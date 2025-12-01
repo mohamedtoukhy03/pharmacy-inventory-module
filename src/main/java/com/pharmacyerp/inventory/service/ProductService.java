@@ -5,11 +5,13 @@ import com.pharmacyerp.inventory.entity.Category;
 import com.pharmacyerp.inventory.entity.Ingredient;
 import com.pharmacyerp.inventory.entity.Product;
 import com.pharmacyerp.inventory.entity.ProductIngredient;
+import com.pharmacyerp.inventory.entity.MeasurementUnit;
 import com.pharmacyerp.inventory.exception.NotFoundException;
 import com.pharmacyerp.inventory.repository.CategoryRepository;
 import com.pharmacyerp.inventory.repository.IngredientRepository;
 import com.pharmacyerp.inventory.repository.ProductIngredientRepository;
 import com.pharmacyerp.inventory.repository.ProductRepository;
+import com.pharmacyerp.inventory.repository.MeasurementUnitRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -28,15 +30,18 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final IngredientRepository ingredientRepository;
     private final ProductIngredientRepository productIngredientRepository;
+    private final MeasurementUnitRepository measurementUnitRepository;
 
     public ProductService(ProductRepository productRepository,
                           CategoryRepository categoryRepository,
                           IngredientRepository ingredientRepository,
-                          ProductIngredientRepository productIngredientRepository) {
+                          ProductIngredientRepository productIngredientRepository,
+                          MeasurementUnitRepository measurementUnitRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.ingredientRepository = ingredientRepository;
         this.productIngredientRepository = productIngredientRepository;
+        this.measurementUnitRepository = measurementUnitRepository;
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +72,12 @@ public class ProductService {
         product.setIsDrug(request.isDrug());
         product.setControlledSubstance(request.controlledSubstance());
 
+        if (request.measurementUnitId() != null) {
+            MeasurementUnit mu = measurementUnitRepository.findById(request.measurementUnitId())
+                    .orElseThrow(() -> new NotFoundException("Measurement unit not found: " + request.measurementUnitId()));
+            product.setMeasurementUnit(mu);
+        }
+
         Product saved = productRepository.save(product);
         return toDto(saved);
     }
@@ -89,6 +100,11 @@ public class ProductService {
         if (request.sellingPrice() != null) product.setSellingPrice(request.sellingPrice());
         if (request.isDrug() != null) product.setIsDrug(request.isDrug());
         if (request.controlledSubstance() != null) product.setControlledSubstance(request.controlledSubstance());
+        if (request.measurementUnitId() != null) {
+            MeasurementUnit mu = measurementUnitRepository.findById(request.measurementUnitId())
+                    .orElseThrow(() -> new NotFoundException("Measurement unit not found: " + request.measurementUnitId()));
+            product.setMeasurementUnit(mu);
+        }
 
         return toDto(product);
     }
@@ -184,6 +200,9 @@ public class ProductService {
                 ))
                 .toList();
 
+        Integer muId = product.getMeasurementUnit() != null ? product.getMeasurementUnit().getId() : null;
+        String muName = product.getMeasurementUnit() != null ? product.getMeasurementUnit().getName() : null;
+
         return new ProductDto(
                 product.getId(),
                 product.getName(),
@@ -195,6 +214,8 @@ public class ProductService {
                 product.getSellingPrice(),
                 product.getIsDrug(),
                 product.getControlledSubstance(),
+                muId,
+                muName,
                 categories,
                 ingredients
         );

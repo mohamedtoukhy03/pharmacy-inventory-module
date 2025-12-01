@@ -47,6 +47,10 @@ public class Product {
     @Column(name = "controlled_substance")
     private Boolean controlledSubstance;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "measurement_unit_id")
+    private MeasurementUnit measurementUnit;
+
     @ManyToMany
     @JoinTable(
             name = "\"products_categories\"",

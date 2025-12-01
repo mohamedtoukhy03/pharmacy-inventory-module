@@ -1,4 +1,4 @@
-package com.pharmacyerp;
+package com.pharmacyerp.inventory;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
