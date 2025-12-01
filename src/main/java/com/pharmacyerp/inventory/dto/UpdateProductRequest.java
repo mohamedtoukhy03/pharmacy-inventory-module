@@ -11,7 +11,8 @@ public record UpdateProductRequest(
         Integer cost,
         Integer sellingPrice,
         Boolean isDrug,
-        Boolean controlledSubstance
+        Boolean controlledSubstance,
+        Integer measurementUnitId
 ) {
 }
 

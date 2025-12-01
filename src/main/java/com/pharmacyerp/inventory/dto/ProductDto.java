@@ -13,6 +13,8 @@ public record ProductDto(
         Integer sellingPrice,
         Boolean isDrug,
         Boolean controlledSubstance,
+        Integer measurementUnitId,
+        String measurementUnitName,
         List<CategorySummaryDto> categories,
         List<ProductIngredientDto> ingredients
 ) {
