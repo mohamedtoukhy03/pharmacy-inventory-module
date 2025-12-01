@@ -1,7 +1,6 @@
 package com.pharmacyerp.inventory.entity;
 
 import jakarta.persistence.*;
-import com.pharmacyerp.inventory.entity.MeasurementUnit;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
