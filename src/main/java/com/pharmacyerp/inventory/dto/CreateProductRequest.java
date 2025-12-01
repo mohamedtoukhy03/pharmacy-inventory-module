@@ -12,7 +12,8 @@ public record CreateProductRequest(
         Integer cost,
         Integer sellingPrice,
         Boolean isDrug,
-        Boolean controlledSubstance
+        Boolean controlledSubstance,
+        Integer measurementUnitId
 ) {
 }
 
