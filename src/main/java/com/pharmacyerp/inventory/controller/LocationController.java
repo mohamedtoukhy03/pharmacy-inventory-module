@@ -2,7 +2,8 @@ package com.pharmacyerp.inventory.controller;
 
 import com.pharmacyerp.inventory.dto.LocationDto;
 import com.pharmacyerp.inventory.dto.UpsertLocationRequest;
-import com.pharmacyerp.inventory.entity.Location;
+import com.pharmacyerp.inventory.enums.LocationStatus;
+import com.pharmacyerp.inventory.enums.LocationType;
 import com.pharmacyerp.inventory.service.LocationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,9 +29,9 @@ public class LocationController {
     @Operation(summary = "Search locations with optional filters")
     public List<LocationDto> searchLocations(
             @Parameter(description = "Filter by location type")
-            @RequestParam(value = "type", required = false) Location.LocationType type,
+            @RequestParam(value = "type", required = false) LocationType type,
             @Parameter(description = "Filter by status")
-            @RequestParam(value = "status", required = false) Location.LocationStatus status) {
+            @RequestParam(value = "status", required = false) LocationStatus status) {
         return locationService.search(type, status);
     }
 

@@ -1,11 +1,11 @@
 package com.pharmacyerp.inventory.entity;
 
+import com.pharmacyerp.inventory.enums.LocationStatus;
+import com.pharmacyerp.inventory.enums.LocationType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -25,7 +25,6 @@ public class Location {
     private String locationName;
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "location_type")
     private LocationType locationType;
 
@@ -40,7 +39,6 @@ public class Location {
     private String address;
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status")
     private LocationStatus status;
 
@@ -49,12 +47,4 @@ public class Location {
 
     @OneToMany(mappedBy = "location", cascade = CascadeType.ALL)
     private Set<Shelf> shelves = new HashSet<>();
-
-    public enum LocationType {
-        branch, warehouse, external, supplier, quarantine
-    }
-
-    public enum LocationStatus {
-        active, inactive
-    }
 }

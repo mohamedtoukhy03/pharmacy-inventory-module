@@ -3,6 +3,8 @@ package com.pharmacyerp.inventory.service;
 import com.pharmacyerp.inventory.dto.LocationDto;
 import com.pharmacyerp.inventory.dto.UpsertLocationRequest;
 import com.pharmacyerp.inventory.entity.Location;
+import com.pharmacyerp.inventory.enums.LocationStatus;
+import com.pharmacyerp.inventory.enums.LocationType;
 import com.pharmacyerp.inventory.exception.NotFoundException;
 import com.pharmacyerp.inventory.repository.LocationRepository;
 import org.springframework.data.jpa.domain.Specification;
@@ -24,7 +26,7 @@ public class LocationService {
     }
 
     @Transactional(readOnly = true)
-    public List<LocationDto> search(Location.LocationType type, Location.LocationStatus status) {
+    public List<LocationDto> search(LocationType type, LocationStatus status) {
         Specification<Location> spec = Specification.where(hasType(type))
                 .and(hasStatus(status));
 
@@ -39,7 +41,7 @@ public class LocationService {
         location.setLocationType(request.locationType());
         location.setIsDirectToMain(request.isDirectToMain());
         location.setAddress(request.address());
-        location.setStatus(request.status() != null ? request.status() : Location.LocationStatus.active);
+        location.setStatus(request.status() != null ? request.status() : LocationStatus.active);
 
         if (request.parentLocationId() != null) {
             Location parent = locationRepository.findById(request.parentLocationId())

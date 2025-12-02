@@ -5,6 +5,7 @@ import com.pharmacyerp.inventory.dto.UpsertBatchRequest;
 import com.pharmacyerp.inventory.entity.Batch;
 import com.pharmacyerp.inventory.entity.Location;
 import com.pharmacyerp.inventory.entity.Product;
+import com.pharmacyerp.inventory.enums.StockType;
 import com.pharmacyerp.inventory.exception.NotFoundException;
 import com.pharmacyerp.inventory.repository.BatchRepository;
 import com.pharmacyerp.inventory.repository.LocationRepository;
@@ -38,7 +39,7 @@ public class BatchService {
     @Transactional(readOnly = true)
     public Page<BatchDto> searchBatches(Integer productId,
                                         Integer locationId,
-                                        Batch.StockType stockType,
+                                        StockType stockType,
                                         LocalDate expiryBefore,
                                         String batchNumber,
                                         Pageable pageable) {
@@ -62,7 +63,7 @@ public class BatchService {
         Batch batch = new Batch();
         batch.setProduct(product);
         batch.setLocation(location);
-        batch.setStockType(request.stockType() != null ? request.stockType() : Batch.StockType.available);
+        batch.setStockType(request.stockType() != null ? request.stockType() : StockType.available);
         batch.setQuantity(request.quantity());
         batch.setBatchNumber(request.batchNumber());
         batch.setCost(request.cost());

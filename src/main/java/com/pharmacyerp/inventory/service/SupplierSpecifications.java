@@ -1,6 +1,7 @@
 package com.pharmacyerp.inventory.service;
 
 import com.pharmacyerp.inventory.entity.Supplier;
+import com.pharmacyerp.inventory.enums.ActiveStatus;
 import org.springframework.data.jpa.domain.Specification;
 
 public final class SupplierSpecifications {
@@ -17,7 +18,7 @@ public final class SupplierSpecifications {
         };
     }
 
-    public static Specification<Supplier> hasActiveStatus(Supplier.ActiveStatus activeStatus) {
+    public static Specification<Supplier> hasActiveStatus(ActiveStatus activeStatus) {
         return (root, query, cb) -> {
             if (activeStatus == null) {
                 return cb.conjunction();

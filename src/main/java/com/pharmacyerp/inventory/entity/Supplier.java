@@ -1,11 +1,10 @@
 package com.pharmacyerp.inventory.entity;
 
+import com.pharmacyerp.inventory.enums.ActiveStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 
@@ -40,11 +39,6 @@ public class Supplier {
     private String currency;
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "Active_status")
     private ActiveStatus activeStatus;
-
-    public enum ActiveStatus {
-        active, inactive
-    }
 }

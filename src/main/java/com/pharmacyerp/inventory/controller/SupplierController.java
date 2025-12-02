@@ -2,7 +2,7 @@ package com.pharmacyerp.inventory.controller;
 
 import com.pharmacyerp.inventory.dto.SupplierDto;
 import com.pharmacyerp.inventory.dto.UpsertSupplierRequest;
-import com.pharmacyerp.inventory.entity.Supplier;
+import com.pharmacyerp.inventory.enums.ActiveStatus;
 import com.pharmacyerp.inventory.service.SupplierService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,7 +28,7 @@ public class SupplierController {
     @Operation(summary = "Search suppliers with optional filters")
     public List<SupplierDto> searchSuppliers(
             @Parameter(description = "Filter by country") @RequestParam(value = "country", required = false) String country,
-            @Parameter(description = "Filter by active status") @RequestParam(value = "activeStatus", required = false) Supplier.ActiveStatus activeStatus) {
+            @Parameter(description = "Filter by active status") @RequestParam(value = "activeStatus", required = false) ActiveStatus activeStatus) {
         return supplierService.search(country, activeStatus);
     }
 

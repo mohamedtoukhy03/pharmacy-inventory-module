@@ -1,6 +1,6 @@
 package com.pharmacyerp.inventory.dto;
 
-import com.pharmacyerp.inventory.entity.Supplier;
+import com.pharmacyerp.inventory.enums.ActiveStatus;
 
 import java.math.BigDecimal;
 
@@ -12,6 +12,6 @@ public record SupplierDto(
         String country,
         BigDecimal rating,
         String currency,
-        Supplier.ActiveStatus activeStatus
+        ActiveStatus activeStatus
 ) {
 }

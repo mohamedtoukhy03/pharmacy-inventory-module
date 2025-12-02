@@ -1,8 +1,7 @@
 package com.pharmacyerp.inventory.entity;
 
+import com.pharmacyerp.inventory.enums.StockType;
 import jakarta.persistence.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -31,7 +30,6 @@ public class Batch {
     private Location location;
 
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "stock_type")
     private StockType stockType;
 
@@ -71,8 +69,4 @@ public class Batch {
 
     @OneToMany(mappedBy = "batch", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<BatchShelfAllocation> shelfAllocations = new HashSet<>();
-
-    public enum StockType {
-        available, near_expiry, removed, expired, disposed, damaged, quarantined
-    }
 }
