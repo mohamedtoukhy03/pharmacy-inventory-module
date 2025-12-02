@@ -3,6 +3,7 @@ package com.pharmacyerp.inventory.service;
 import com.pharmacyerp.inventory.dto.SupplierDto;
 import com.pharmacyerp.inventory.dto.UpsertSupplierRequest;
 import com.pharmacyerp.inventory.entity.Supplier;
+import com.pharmacyerp.inventory.enums.ActiveStatus;
 import com.pharmacyerp.inventory.exception.NotFoundException;
 import com.pharmacyerp.inventory.repository.SupplierRepository;
 import org.springframework.data.jpa.domain.Specification;
@@ -24,7 +25,7 @@ public class SupplierService {
     }
 
     @Transactional(readOnly = true)
-    public List<SupplierDto> search(String country, Supplier.ActiveStatus activeStatus) {
+    public List<SupplierDto> search(String country, ActiveStatus activeStatus) {
         Specification<Supplier> spec = Specification.where(hasCountry(country))
                 .and(hasActiveStatus(activeStatus));
 
@@ -43,7 +44,7 @@ public class SupplierService {
         supplier.setCurrency(request.currency());
         supplier.setActiveStatus(request.activeStatus() != null 
                 ? request.activeStatus() 
-                : Supplier.ActiveStatus.active);
+                : ActiveStatus.active);
 
         Supplier saved = supplierRepository.save(supplier);
         return toDto(saved);

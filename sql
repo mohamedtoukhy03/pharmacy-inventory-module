@@ -1,121 +1,6 @@
 
 -- =========================
--- ENUM TYPE DEFINITIONS
--- =========================
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'quality_packaging_status_enum') THEN
-    CREATE TYPE quality_packaging_status_enum AS ENUM ('ok','damaged','compromised');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'quality_expiry_status_enum') THEN
-    CREATE TYPE quality_expiry_status_enum AS ENUM ('valid','near_expiry','expired');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'quality_result_enum') THEN
-    CREATE TYPE quality_result_enum AS ENUM ('passed','failed','conditional');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'purchase_order_status_enum') THEN
-    CREATE TYPE purchase_order_status_enum AS ENUM ('draft','submitted','approved','partially_received','received','cancelled');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status_enum') THEN
-    CREATE TYPE user_status_enum AS ENUM ('active','inactive','suspended');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'location_type_enum') THEN
-    CREATE TYPE location_type_enum AS ENUM ('branch','warehouse','external','supplier','quarantine');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'location_status_enum') THEN
-    CREATE TYPE location_status_enum AS ENUM ('active','inactive');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_drug_type_enum') THEN
-    CREATE TYPE product_drug_type_enum AS ENUM ('otc','prescription','controlled','supplement');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'supplier_active_status_enum') THEN
-    CREATE TYPE supplier_active_status_enum AS ENUM ('active','inactive');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'goods_receipt_condition_enum') THEN
-    CREATE TYPE goods_receipt_condition_enum AS ENUM ('ok','damaged','pending_inspection','rejected');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'batch_stock_type_enum') THEN
-    CREATE TYPE batch_stock_type_enum AS ENUM ('available','near_expiry','removed','expired','disposed','damaged','quarantined');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'stock_transfer_status_enum') THEN
-    CREATE TYPE stock_transfer_status_enum AS ENUM ('draft','submitted','shipped','received','cancelled');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'replenishment_request_status_enum') THEN
-    CREATE TYPE replenishment_request_status_enum AS ENUM ('pending','accepted','rejected','fulfilled','cancelled');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'rfq_supplier_status_enum') THEN
-    CREATE TYPE rfq_supplier_status_enum AS ENUM ('pending','quoted','declined');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'rfq_status_enum') THEN
-    CREATE TYPE rfq_status_enum AS ENUM ('draft','sent','closed','cancelled');
-  END IF;
-END $$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role_name_enum') THEN
-    CREATE TYPE role_name_enum AS ENUM ('admin','manager','pharmacist','warehouse_clerk','viewer');
-  END IF;
-END $$;
-
--- =========================
--- TABLES (Original naming preserved)
+-- TABLES 
 -- =========================
 
 CREATE TABLE "QualityInspection" (
@@ -123,9 +8,9 @@ CREATE TABLE "QualityInspection" (
   "GRN_id" int,
   "BatchId" int,
   "Temperature_check" boolean,
-  "Packaging_status" quality_packaging_status_enum,
-  "Expiry_status" quality_expiry_status_enum,
-  "QCResult" quality_result_enum,
+  "Packaging_status" varchar(30),
+  "Expiry_status" varchar(30),
+  "QCResult" varchar(30),
   "Inspector_name" varchar(30),
   "inspectionDate" date
 );
@@ -144,7 +29,7 @@ CREATE TABLE "PurchaseOrder" (
   "po_number" int,
   "order_date" date,
   "expected_date" date,
-  "status" purchase_order_status_enum,
+  "status" varchar(30),
   "total_amount" int
 );
 
@@ -163,7 +48,7 @@ CREATE TABLE "Users" (
   "phone" varchar,
   "role_id" int,
   "location_id" int,
-  "status" user_status_enum
+  "status" varchar(30)
 );
 
 CREATE TABLE "roles_permission_id" (
@@ -203,11 +88,11 @@ CREATE TABLE "location_stock_level" (
 CREATE TABLE "Location" (
   "location_id" serial PRIMARY KEY,
   "location_name" varchar,
-  "location_type" location_type_enum,
+  "location_type" varchar(30),
   "parent_location" int,
   "is_direct_to_main" boolean,
   "address" varchar,
-  "status" location_status_enum
+  "status" varchar(30)
 );
 
 CREATE TABLE "Products" (
@@ -227,7 +112,7 @@ CREATE TABLE "Products" (
   "Substitutable" boolean,
   "Max allowed units" smallint,
   "Break packs allowed" boolean,
-  "drug_type" product_drug_type_enum,
+  "drug_type" varchar(30),
   "Category ID" smallint,
   "safety_stock_expiry_threshold" smallint,
   "reorder_quantity" int,
@@ -265,7 +150,7 @@ CREATE TABLE "Supplier" (
   "country" varchar(30),
   "rating" decimal,
   "Currency" varchar(30),
-  "Active_status" supplier_active_status_enum
+  "Active_status" varchar(30)
 );
 
 CREATE TABLE "SupplierInvoiceLine" (
@@ -356,7 +241,7 @@ CREATE TABLE "GoodReciept" (
   "GRN_id" serial PRIMARY KEY,
   "PO_id" int,
   "Recieved_Date" date,
-  "condition_Status" goods_receipt_condition_enum
+  "condition_Status" varchar(30)
 );
 
 CREATE TABLE "GoodRecieptItem" (
@@ -371,7 +256,7 @@ CREATE TABLE "GoodRecieptItem" (
 
 CREATE TABLE "Roles" (
   "role_id" serial PRIMARY KEY,
-  "role_name" role_name_enum
+  "role_name" varchar(30)
 );
 
 CREATE TABLE "RFQ_supp_item" (
@@ -395,7 +280,7 @@ CREATE TABLE "ReplishmentRequest" (
   "req_loc_id" int,
   "supplier_id" int,
   "product_id" int,
-  "status" replenishment_request_status_enum,
+  "status" varchar(30),
   "requested_Qty" int,
   "requested_date" date
 );
@@ -404,7 +289,7 @@ CREATE TABLE "RFQ_supplier" (
   "RFQ_sipplier_id" serial PRIMARY KEY,
   "RFQ_id" int,
   "Supplier_id" int,
-  "status" rfq_supplier_status_enum
+  "status" varchar(30)
 );
 
 CREATE TABLE "Purchase_Forecast" (
@@ -420,7 +305,7 @@ CREATE TABLE "Batches" (
   "batch_id" serial PRIMARY KEY,
   "product_id" int,
   "location_id" int,
-  "stock_type" batch_stock_type_enum,
+  "stock_type" varchar(30),
   "quantity" int,
   "batch_number" varchar(50),
   "cost" int,
@@ -448,7 +333,7 @@ CREATE TABLE "Stock_transfers" (
   "transfer_id" serial PRIMARY KEY,
   "fromId" int,
   "Date" date,
-  "status" stock_transfer_status_enum,
+  "status" varchar(30),
   "toId" int
 );
 
@@ -473,7 +358,7 @@ CREATE TABLE "Request_for_quotaion" (
   "RFQ_id" serial PRIMARY KEY,
   "user_id" int,
   "created_date" date,
-  "status" rfq_status_enum
+  "status" varchar(30)
 );
 
 CREATE TABLE "permission" (
@@ -491,14 +376,14 @@ CREATE TABLE "products_categories" (
 -- FOREIGN KEY RELATIONS (errors resolved)
 -- =========================
 
--- Products ↔ categories (products_categories)
+-- Products ↔️ categories (products_categories)
 ALTER TABLE "products_categories"
   ADD CONSTRAINT fk_products_categories_cat
     FOREIGN KEY ("cat_id") REFERENCES "categories" ("cat_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_products_categories_product
     FOREIGN KEY ("product_id") REFERENCES "Products" ("product_id") ON DELETE CASCADE;
 
--- Products ↔ measurement_units
+-- Products ↔️ measurement_units
 ALTER TABLE "Products"
   ADD CONSTRAINT fk_products_measurement_unit
     FOREIGN KEY ("measurement_unit_id") REFERENCES "measurement_units" ("m_id") ON DELETE SET NULL;
@@ -508,40 +393,40 @@ ALTER TABLE "Products"
   ADD CONSTRAINT fk_products_primary_category
     FOREIGN KEY ("Category ID") REFERENCES "categories" ("cat_id") ON DELETE SET NULL;
 
--- products_ingredients ↔ Products & ingredients
+-- products_ingredients ↔️ Products & ingredients
 ALTER TABLE "products_ingredients"
   ADD CONSTRAINT fk_products_ingredients_product
     FOREIGN KEY ("product_id") REFERENCES "Products" ("product_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_products_ingredients_ingredient
     FOREIGN KEY ("ingredient_id") REFERENCES "ingredients" ("id") ON DELETE RESTRICT;
 
--- Supplier_Product ↔ Supplier & Products
+-- Supplier_Product ↔️ Supplier & Products
 ALTER TABLE "Supplier_Product"
   ADD CONSTRAINT fk_supplier_product_supplier
     FOREIGN KEY ("supplier_id") REFERENCES "Supplier" ("supplier_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_supplier_product_product
     FOREIGN KEY ("product_id") REFERENCES "Products" ("product_id") ON DELETE CASCADE;
 
--- location_stock_level ↔ Products & Location
+-- location_stock_level ↔️ Products & Location
 ALTER TABLE "location_stock_level"
   ADD CONSTRAINT fk_lsl_product
     FOREIGN KEY ("product_id") REFERENCES "Products" ("product_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_lsl_location
     FOREIGN KEY ("location_id") REFERENCES "Location" ("location_id") ON DELETE CASCADE;
 
--- shelves ↔ Location
+-- shelves ↔️ Location
 ALTER TABLE "shelves"
   ADD CONSTRAINT fk_shelves_location
     FOREIGN KEY ("location_id") REFERENCES "Location" ("location_id") ON DELETE CASCADE;
 
--- batches_shelves ↔ Batches & shelves
+-- batches_shelves ↔️ Batches & shelves
 ALTER TABLE "batches_shelves"
   ADD CONSTRAINT fk_batches_shelves_batch
     FOREIGN KEY ("batch_id") REFERENCES "Batches" ("batch_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_batches_shelves_shelf
     FOREIGN KEY ("shelf_id") REFERENCES "shelves" ("shelf_id") ON DELETE CASCADE;
 
--- Batches ↔ Products, Location, Supplier, parent batch
+-- Batches ↔️ Products, Location, Supplier, parent batch
 ALTER TABLE "Batches"
   ADD CONSTRAINT fk_batches_product
     FOREIGN KEY ("product_id") REFERENCES "Products" ("product_id") ON DELETE RESTRICT,
@@ -552,7 +437,7 @@ ALTER TABLE "Batches"
   ADD CONSTRAINT fk_batches_parent
     FOREIGN KEY ("parent_batch_id") REFERENCES "Batches" ("batch_id") ON DELETE SET NULL;
 
--- movement_log ↔ Batches, Users, Location
+-- movement_log ↔️ Batches, Users, Location
 ALTER TABLE "movement_log"
   ADD CONSTRAINT fk_movement_batch
     FOREIGN KEY ("Batch id") REFERENCES "Batches" ("batch_id") ON DELETE RESTRICT,
@@ -563,14 +448,14 @@ ALTER TABLE "movement_log"
   ADD CONSTRAINT fk_movement_dest_location
     FOREIGN KEY ("destination_location_id") REFERENCES "Location" ("location_id") ON DELETE SET NULL;
 
--- Stock_transfers ↔ Location
+-- Stock_transfers ↔️ Location
 ALTER TABLE "Stock_transfers"
   ADD CONSTRAINT fk_transfers_from_location
     FOREIGN KEY ("fromId") REFERENCES "Location" ("location_id") ON DELETE RESTRICT,
   ADD CONSTRAINT fk_transfers_to_location
     FOREIGN KEY ("toId") REFERENCES "Location" ("location_id") ON DELETE RESTRICT;
 
--- Stock_Transfer_Items ↔ Stock_transfers, Products, Batches
+-- Stock_Transfer_Items ↔️ Stock_transfers, Products, Batches
 ALTER TABLE "Stock_Transfer_Items "
   ADD CONSTRAINT fk_transfer_items_transfer
     FOREIGN KEY ("transfer_Id") REFERENCES "Stock_transfers" ("transfer_id") ON DELETE CASCADE,
@@ -579,38 +464,38 @@ ALTER TABLE "Stock_Transfer_Items "
   ADD CONSTRAINT fk_transfer_items_batch
     FOREIGN KEY ("batch_id") REFERENCES "Batches" ("batch_id") ON DELETE SET NULL;
 
--- Stocktakings ↔ Users
+-- Stocktakings ↔️ Users
 ALTER TABLE "Stocktakings"
   ADD CONSTRAINT fk_stocktakings_user
     FOREIGN KEY ("User ID") REFERENCES "Users" ("user_id") ON DELETE SET NULL;
 
--- Stocktaking_items ↔ Stocktakings, Products
+-- Stocktaking_items ↔️ Stocktakings, Products
 ALTER TABLE "Stocktaking_items"
   ADD CONSTRAINT fk_stocktaking_items_session
     FOREIGN KEY ("stocktaking_id") REFERENCES "Stocktakings" ("stocktaking_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_stocktaking_items_product
     FOREIGN KEY ("Product ID") REFERENCES "Products" ("product_id") ON DELETE RESTRICT;
 
--- PurchaseOrder ↔ Users, Supplier
+-- PurchaseOrder ↔️ Users, Supplier
 ALTER TABLE "PurchaseOrder"
   ADD CONSTRAINT fk_po_requested_by
     FOREIGN KEY ("requested_by") REFERENCES "Users" ("user_id") ON DELETE SET NULL,
   ADD CONSTRAINT fk_po_supplier
     FOREIGN KEY ("supplier_id") REFERENCES "Supplier" ("supplier_id") ON DELETE SET NULL;
 
--- PO_items ↔ PurchaseOrder, Products
+-- PO_items ↔️ PurchaseOrder, Products
 ALTER TABLE "PO_items"
   ADD CONSTRAINT fk_po_items_po
     FOREIGN KEY ("po_id") REFERENCES "PurchaseOrder" ("po_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_po_items_product
     FOREIGN KEY ("prod_id") REFERENCES "Products" ("product_id") ON DELETE RESTRICT;
 
--- GoodReciept ↔ PurchaseOrder
+-- GoodReciept ↔️ PurchaseOrder
 ALTER TABLE "GoodReciept"
   ADD CONSTRAINT fk_gr_po
     FOREIGN KEY ("PO_id") REFERENCES "PurchaseOrder" ("po_id") ON DELETE SET NULL;
 
--- GoodRecieptItem ↔ Batches, PO_items
+-- GoodRecieptItem ↔️ Batches, PO_items
 -- NOTE: Omitted FK to GoodReciept due to type mismatch (varchar vs int)
 ALTER TABLE "GoodRecieptItem"
   ADD CONSTRAINT fk_gri_batch
@@ -618,35 +503,35 @@ ALTER TABLE "GoodRecieptItem"
   ADD CONSTRAINT fk_gri_po_item
     FOREIGN KEY ("PO_item_ID") REFERENCES "PO_items" ("line_id") ON DELETE SET NULL;
 
--- QualityInspection ↔ GoodReciept, Batches
+-- QualityInspection ↔️ GoodReciept, Batches
 ALTER TABLE "QualityInspection"
   ADD CONSTRAINT fk_qi_gr
     FOREIGN KEY ("GRN_id") REFERENCES "GoodReciept" ("GRN_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_qi_batch
     FOREIGN KEY ("BatchId") REFERENCES "Batches" ("batch_id") ON DELETE SET NULL;
 
--- SupplierInvoice ↔ PurchaseOrder, Supplier
+-- SupplierInvoice ↔️ PurchaseOrder, Supplier
 ALTER TABLE "SupplierInvoice"
   ADD CONSTRAINT fk_si_po
     FOREIGN KEY ("po_id") REFERENCES "PurchaseOrder" ("po_id") ON DELETE SET NULL,
   ADD CONSTRAINT fk_si_supplier
     FOREIGN KEY ("supplier_id") REFERENCES "Supplier" ("supplier_id") ON DELETE SET NULL;
 
--- SupplierInvoiceLine ↔ SupplierInvoice, Products
+-- SupplierInvoiceLine ↔️ SupplierInvoice, Products
 ALTER TABLE "SupplierInvoiceLine"
   ADD CONSTRAINT fk_sil_invoice
     FOREIGN KEY ("invoice_id") REFERENCES "SupplierInvoice" ("invoice_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_sil_product
     FOREIGN KEY ("prod_id") REFERENCES "Products" ("product_id") ON DELETE RESTRICT;
 
--- ReturnOrder ↔ Location, Users
+-- ReturnOrder ↔️ Location, Users
 ALTER TABLE "ReturnOrder"
   ADD CONSTRAINT fk_return_origin_location
     FOREIGN KEY ("origin_location_id") REFERENCES "Location" ("location_id") ON DELETE RESTRICT,
   ADD CONSTRAINT fk_return_created_by
     FOREIGN KEY ("created_by") REFERENCES "Users" ("user_id") ON DELETE SET NULL;
 
--- returnOrderItem ↔ ReturnOrder, Products, Batches
+-- returnOrderItem ↔️ ReturnOrder, Products, Batches
 ALTER TABLE "returnOrderItem"
   ADD CONSTRAINT fk_return_item_return
     FOREIGN KEY ("return_id ") REFERENCES "ReturnOrder" ("return_id") ON DELETE CASCADE,
@@ -655,14 +540,14 @@ ALTER TABLE "returnOrderItem"
   ADD CONSTRAINT fk_return_item_batch
     FOREIGN KEY ("batch_id") REFERENCES "Batches" ("batch_id") ON DELETE SET NULL;
 
--- RFQ_items ↔ Request_for_quotaion, Products
+-- RFQ_items ↔️ Request_for_quotaion, Products
 ALTER TABLE "RFQ_items"
   ADD CONSTRAINT fk_rfq_items_rfq
     FOREIGN KEY ("RFQ_id") REFERENCES "Request_for_quotaion" ("RFQ_id") ON DELETE CASCADE,
   ADD CONSTRAINT fk_rfq_items_product
     FOREIGN KEY ("Product_id") REFERENCES "Products" ("product_id") ON DELETE RESTRICT;
 
--- RFQ_supp_item ↔ Request_for_quotaion, Supplier, Products
+-- RFQ_supp_item ↔️ Request_for_quotaion, Supplier, Products
 ALTER TABLE "RFQ_supp_item"
   ADD CONSTRAINT fk_rfq_supp_item_rfq
     FOREIGN KEY ("rfq_id") REFERENCES "Request_for_quotaion" ("RFQ_id") ON DELETE CASCADE,
@@ -671,19 +556,19 @@ ALTER TABLE "RFQ_supp_item"
   ADD CONSTRAINT fk_rfq_supp_item_product
     FOREIGN KEY ("product_id ") REFERENCES "Products" ("product_id") ON DELETE RESTRICT;
 
--- SupplierQuotation ↔ RFQ & Supplier
+-- SupplierQuotation ↔️ RFQ & Supplier
 ALTER TABLE "SupplierQuotation"
   ADD CONSTRAINT fk_supplier_quotation_rfq
     FOREIGN KEY ("rfq_id") REFERENCES "Request_for_quotaion" ("RFQ_id") ON DELETE SET NULL,
   ADD CONSTRAINT fk_supplier_quotation_supplier
     FOREIGN KEY ("supplier_id") REFERENCES "Supplier" ("supplier_id") ON DELETE SET NULL;
 
--- Replishment_routing_rules ↔ Location
+-- Replishment_routing_rules ↔️ Location
 ALTER TABLE "Replishment_routing_rules"
   ADD CONSTRAINT fk_repl_rules_location
     FOREIGN KEY ("location_id") REFERENCES "Location" ("location_id") ON DELETE CASCADE;
 
--- ReplishmentRequest ↔ Location, Supplier, Products
+-- ReplishmentRequest ↔️ Location, Supplier, Products
 ALTER TABLE "ReplishmentRequest"
   ADD CONSTRAINT fk_replen_req_location
     FOREIGN KEY ("req_loc_id") REFERENCES "Location" ("location_id") ON DELETE RESTRICT,
@@ -692,14 +577,14 @@ ALTER TABLE "ReplishmentRequest"
   ADD CONSTRAINT fk_replen_req_product
     FOREIGN KEY ("product_id") REFERENCES "Products" ("product_id") ON DELETE RESTRICT;
 
--- Users ↔ Roles (role_id), Location (location_id)
+-- Users ↔️ Roles (role_id), Location (location_id)
 ALTER TABLE "Users"
   ADD CONSTRAINT fk_users_role
     FOREIGN KEY ("role_id") REFERENCES "Roles" ("role_id") ON DELETE SET NULL,
   ADD CONSTRAINT fk_users_location
     FOREIGN KEY ("location_id") REFERENCES "Location" ("location_id") ON DELETE SET NULL;
 
--- roles_permission_id ↔ Roles, permission
+-- roles_permission_id ↔️ Roles, permission
 ALTER TABLE "roles_permission_id"
   ADD CONSTRAINT fk_roles_perm_role
     FOREIGN KEY ("role_id") REFERENCES "Roles" ("role_id") ON DELETE CASCADE,

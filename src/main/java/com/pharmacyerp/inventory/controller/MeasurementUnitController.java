@@ -28,6 +28,12 @@ public class MeasurementUnitController {
         return measurementUnitService.findAll();
     }
 
+    @GetMapping("/{muId}")
+    @Operation(summary = "Get a measurement unit by ID")
+    public MeasurementUnitDto getMeasurementUnit(@PathVariable Integer muId) {
+        return measurementUnitService.getMeasurementUnit(muId);
+    }
+
     @PostMapping
     @Operation(summary = "Create a new measurement unit")
     @ResponseStatus(HttpStatus.CREATED)
@@ -51,5 +57,3 @@ public class MeasurementUnitController {
         measurementUnitService.delete(muId);
     }
 }
-
-

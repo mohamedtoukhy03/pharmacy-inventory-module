@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"location_stock_level\"")
+@Table(name = "location_stock_level")
 public class StockLevel {
 
     @Id

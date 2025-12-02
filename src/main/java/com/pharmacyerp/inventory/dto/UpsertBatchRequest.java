@@ -1,6 +1,6 @@
 package com.pharmacyerp.inventory.dto;
 
-import com.pharmacyerp.inventory.entity.Batch;
+import com.pharmacyerp.inventory.enums.StockType;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
@@ -8,7 +8,7 @@ import java.time.LocalDate;
 public record UpsertBatchRequest(
         @NotNull Integer productId,
         @NotNull Integer locationId,
-        Batch.StockType stockType,
+        StockType stockType,
         @NotNull Integer quantity,
         String batchNumber,
         Integer cost,

@@ -30,6 +30,12 @@ public class IngredientController {
         return ingredientService.search(name, active);
     }
 
+    @GetMapping("/{ingredientId}")
+    @Operation(summary = "Get an ingredient by ID")
+    public IngredientDto getIngredient(@PathVariable Integer ingredientId) {
+        return ingredientService.getIngredient(ingredientId);
+    }
+
     @PostMapping
     @Operation(summary = "Create a new ingredient")
     @ResponseStatus(HttpStatus.CREATED)
@@ -40,7 +46,7 @@ public class IngredientController {
     @PatchMapping("/{ingredientId}")
     @Operation(summary = "Update an existing ingredient")
     public IngredientDto updateIngredient(@PathVariable Integer ingredientId,
-                                          @Valid @RequestBody UpsertIngredientRequest request) {
+            @Valid @RequestBody UpsertIngredientRequest request) {
         return ingredientService.update(ingredientId, request);
     }
 
@@ -51,5 +57,3 @@ public class IngredientController {
         ingredientService.delete(ingredientId);
     }
 }
-
-

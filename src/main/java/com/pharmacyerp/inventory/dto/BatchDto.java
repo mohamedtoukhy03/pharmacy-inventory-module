@@ -1,6 +1,6 @@
 package com.pharmacyerp.inventory.dto;
 
-import com.pharmacyerp.inventory.entity.Batch;
+import com.pharmacyerp.inventory.enums.StockType;
 
 import java.time.LocalDate;
 
@@ -10,7 +10,7 @@ public record BatchDto(
         String productName,
         Integer locationId,
         String locationName,
-        Batch.StockType stockType,
+        StockType stockType,
         Integer quantity,
         String batchNumber,
         Integer cost,

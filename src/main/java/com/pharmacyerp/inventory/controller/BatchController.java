@@ -2,7 +2,7 @@ package com.pharmacyerp.inventory.controller;
 
 import com.pharmacyerp.inventory.dto.BatchDto;
 import com.pharmacyerp.inventory.dto.UpsertBatchRequest;
-import com.pharmacyerp.inventory.entity.Batch;
+import com.pharmacyerp.inventory.enums.StockType;
 import com.pharmacyerp.inventory.service.BatchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,7 +37,7 @@ public class BatchController {
             @Parameter(description = "Filter by location id")
             @RequestParam(value = "locationId", required = false) Integer locationId,
             @Parameter(description = "Filter by stock type")
-            @RequestParam(value = "stockType", required = false) Batch.StockType stockType,
+            @RequestParam(value = "stockType", required = false) StockType stockType,
             @Parameter(description = "Filter batches expiring before this date")
             @RequestParam(value = "expiryBefore", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expiryBefore,
             @Parameter(description = "Filter by batch number")

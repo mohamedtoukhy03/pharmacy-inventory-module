@@ -44,6 +44,13 @@ public class IngredientService {
         return toDto(ingredientRepository.save(ingredient));
     }
 
+    @Transactional(readOnly = true)
+    public IngredientDto getIngredient(Integer id) {
+        Ingredient ingredient = ingredientRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Ingredient not found: " + id));
+        return toDto(ingredient);
+    }
+
     public IngredientDto update(Integer id, UpsertIngredientRequest request) {
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found: " + id));
@@ -67,9 +74,6 @@ public class IngredientService {
                 ingredient.getId(),
                 ingredient.getName(),
                 ingredient.getDescription(),
-                ingredient.getActive()
-        );
+                ingredient.getActive());
     }
 }
-
-

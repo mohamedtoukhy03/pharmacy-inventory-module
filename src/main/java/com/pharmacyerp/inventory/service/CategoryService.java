@@ -40,6 +40,13 @@ public class CategoryService {
         return toDto(categoryRepository.save(category));
     }
 
+    @Transactional(readOnly = true)
+    public CategoryDto getCategory(Integer id) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Category not found: " + id));
+        return toDto(category);
+    }
+
     public CategoryDto update(Integer id, UpsertCategoryRequest request) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Category not found: " + id));
@@ -59,9 +66,6 @@ public class CategoryService {
         return new CategoryDto(
                 category.getId(),
                 category.getName(),
-                category.getDescription()
-        );
+                category.getDescription());
     }
 }
-
-

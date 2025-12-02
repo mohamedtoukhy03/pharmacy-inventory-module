@@ -1,5 +1,7 @@
 package com.pharmacyerp.inventory.entity;
 
+import com.pharmacyerp.inventory.enums.LocationStatus;
+import com.pharmacyerp.inventory.enums.LocationType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,7 +13,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"Location\"")
+@Table(name = "Location")
 public class Location {
 
     @Id
@@ -23,7 +25,7 @@ public class Location {
     private String locationName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "location_type", columnDefinition = "location_type_enum")
+    @Column(name = "location_type")
     private LocationType locationType;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,7 +39,7 @@ public class Location {
     private String address;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", columnDefinition = "location_status_enum")
+    @Column(name = "status")
     private LocationStatus status;
 
     @OneToMany(mappedBy = "parentLocation", cascade = CascadeType.ALL)
@@ -45,12 +47,4 @@ public class Location {
 
     @OneToMany(mappedBy = "location", cascade = CascadeType.ALL)
     private Set<Shelf> shelves = new HashSet<>();
-
-    public enum LocationType {
-        branch, warehouse, external, supplier, quarantine
-    }
-
-    public enum LocationStatus {
-        active, inactive
-    }
 }

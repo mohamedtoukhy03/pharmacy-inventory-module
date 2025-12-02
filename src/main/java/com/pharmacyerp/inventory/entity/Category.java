@@ -12,7 +12,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"categories\"")
+@Table(name = "categories")
 public class Category {
 
     @Id
@@ -29,5 +29,3 @@ public class Category {
     @ManyToMany(mappedBy = "categories")
     private Set<Product> products = new HashSet<>();
 }
-
-

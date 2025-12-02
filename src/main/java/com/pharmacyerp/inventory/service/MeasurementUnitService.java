@@ -33,6 +33,13 @@ public class MeasurementUnitService {
         return toDto(measurementUnitRepository.save(mu));
     }
 
+    @Transactional(readOnly = true)
+    public MeasurementUnitDto getMeasurementUnit(Integer id) {
+        MeasurementUnit mu = measurementUnitRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Measurement unit not found: " + id));
+        return toDto(mu);
+    }
+
     public MeasurementUnitDto update(Integer id, UpsertMeasurementUnitRequest request) {
         MeasurementUnit mu = measurementUnitRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Measurement unit not found: " + id));
@@ -62,9 +69,6 @@ public class MeasurementUnitService {
                 mu.getBaseUnit(),
                 mu.getConversionFactor(),
                 mu.getDescription(),
-                mu.getSymbol()
-        );
+                mu.getSymbol());
     }
 }
-
-

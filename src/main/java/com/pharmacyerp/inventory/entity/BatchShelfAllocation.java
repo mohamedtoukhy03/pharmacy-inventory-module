@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"batches_shelves\"")
+@Table(name = "batches_shelves")
 public class BatchShelfAllocation {
 
     @Id

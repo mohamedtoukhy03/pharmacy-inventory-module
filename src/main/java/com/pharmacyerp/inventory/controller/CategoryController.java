@@ -29,6 +29,12 @@ public class CategoryController {
         return categoryService.search(name);
     }
 
+    @GetMapping("/{catId}")
+    @Operation(summary = "Get a category by ID")
+    public CategoryDto getCategory(@PathVariable Integer catId) {
+        return categoryService.getCategory(catId);
+    }
+
     @PostMapping
     @Operation(summary = "Create a new category")
     @ResponseStatus(HttpStatus.CREATED)
@@ -39,7 +45,7 @@ public class CategoryController {
     @PatchMapping("/{catId}")
     @Operation(summary = "Update an existing category")
     public CategoryDto updateCategory(@PathVariable Integer catId,
-                                      @Valid @RequestBody UpsertCategoryRequest request) {
+            @Valid @RequestBody UpsertCategoryRequest request) {
         return categoryService.update(catId, request);
     }
 
@@ -50,5 +56,3 @@ public class CategoryController {
         categoryService.delete(catId);
     }
 }
-
-

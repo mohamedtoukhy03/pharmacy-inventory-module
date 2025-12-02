@@ -1,6 +1,7 @@
 package com.pharmacyerp.inventory.service;
 
 import com.pharmacyerp.inventory.entity.Batch;
+import com.pharmacyerp.inventory.enums.StockType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
@@ -28,7 +29,7 @@ public final class BatchSpecifications {
         };
     }
 
-    public static Specification<Batch> hasStockType(Batch.StockType stockType) {
+    public static Specification<Batch> hasStockType(StockType stockType) {
         return (root, query, cb) -> {
             if (stockType == null) {
                 return cb.conjunction();
