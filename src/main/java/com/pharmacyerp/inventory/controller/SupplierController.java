@@ -27,11 +27,15 @@ public class SupplierController {
     @GetMapping
     @Operation(summary = "Search suppliers with optional filters")
     public List<SupplierDto> searchSuppliers(
-            @Parameter(description = "Filter by country")
-            @RequestParam(value = "country", required = false) String country,
-            @Parameter(description = "Filter by active status")
-            @RequestParam(value = "activeStatus", required = false) Supplier.ActiveStatus activeStatus) {
+            @Parameter(description = "Filter by country") @RequestParam(value = "country", required = false) String country,
+            @Parameter(description = "Filter by active status") @RequestParam(value = "activeStatus", required = false) Supplier.ActiveStatus activeStatus) {
         return supplierService.search(country, activeStatus);
+    }
+
+    @GetMapping("/{supplierId}")
+    @Operation(summary = "Get a supplier by ID")
+    public SupplierDto getSupplier(@PathVariable Integer supplierId) {
+        return supplierService.getSupplier(supplierId);
     }
 
     @PostMapping
@@ -44,7 +48,7 @@ public class SupplierController {
     @PatchMapping("/{supplierId}")
     @Operation(summary = "Update an existing supplier")
     public SupplierDto updateSupplier(@PathVariable Integer supplierId,
-                                     @Valid @RequestBody UpsertSupplierRequest request) {
+            @Valid @RequestBody UpsertSupplierRequest request) {
         return supplierService.update(supplierId, request);
     }
 

@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -11,7 +13,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"Location\"")
+@Table(name = "Location")
 public class Location {
 
     @Id
@@ -23,7 +25,8 @@ public class Location {
     private String locationName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "location_type", columnDefinition = "location_type_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "location_type")
     private LocationType locationType;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,7 +40,8 @@ public class Location {
     private String address;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", columnDefinition = "location_status_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "status")
     private LocationStatus status;
 
     @OneToMany(mappedBy = "parentLocation", cascade = CascadeType.ALL)

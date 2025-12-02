@@ -12,7 +12,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"shelves\"")
+@Table(name = "shelves")
 public class Shelf {
 
     @Id

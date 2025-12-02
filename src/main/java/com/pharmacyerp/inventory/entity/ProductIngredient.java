@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"products_ingredients\"")
+@Table(name = "products_ingredients")
 public class ProductIngredient {
 
     @Id
@@ -28,5 +28,3 @@ public class ProductIngredient {
     @Column(name = "amount")
     private Integer amount;
 }
-
-

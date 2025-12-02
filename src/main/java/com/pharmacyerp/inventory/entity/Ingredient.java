@@ -12,7 +12,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"ingredients\"")
+@Table(name = "ingredients")
 public class Ingredient {
 
     @Id
@@ -32,5 +32,3 @@ public class Ingredient {
     @OneToMany(mappedBy = "ingredient", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProductIngredient> products = new HashSet<>();
 }
-
-

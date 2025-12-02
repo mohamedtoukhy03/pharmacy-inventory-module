@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 
@@ -11,7 +13,7 @@ import java.math.BigDecimal;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"Supplier\"")
+@Table(name = "Supplier")
 public class Supplier {
 
     @Id
@@ -38,7 +40,8 @@ public class Supplier {
     private String currency;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "Active_status", columnDefinition = "supplier_active_status_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "Active_status")
     private ActiveStatus activeStatus;
 
     public enum ActiveStatus {

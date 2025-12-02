@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"measurement_units\"")
+@Table(name = "measurement_units")
 public class MeasurementUnit {
 
     @Id
@@ -32,5 +32,3 @@ public class MeasurementUnit {
     @Column(name = "sympol")
     private String symbol;
 }
-
-

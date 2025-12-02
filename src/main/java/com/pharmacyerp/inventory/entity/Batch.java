@@ -1,6 +1,8 @@
 package com.pharmacyerp.inventory.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,7 +14,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"Batches\"")
+@Table(name = "Batches")
 public class Batch {
 
     @Id
@@ -29,7 +31,8 @@ public class Batch {
     private Location location;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "stock_type", columnDefinition = "batch_stock_type_enum")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "stock_type")
     private StockType stockType;
 
     @Column(name = "quantity")

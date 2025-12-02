@@ -12,7 +12,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "\"Products\"")
+@Table(name = "Products")
 public class Product {
 
     @Id
@@ -52,15 +52,9 @@ public class Product {
     private MeasurementUnit measurementUnit;
 
     @ManyToMany
-    @JoinTable(
-            name = "\"products_categories\"",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "cat_id")
-    )
+    @JoinTable(name = "\"products_categories\"", joinColumns = @JoinColumn(name = "product_id"), inverseJoinColumns = @JoinColumn(name = "cat_id"))
     private Set<Category> categories = new HashSet<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<ProductIngredient> ingredients = new HashSet<>();
 }
-
-
