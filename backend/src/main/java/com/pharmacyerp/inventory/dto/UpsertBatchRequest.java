@@ -6,11 +6,19 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
 public record UpsertBatchRequest(
-        @NotNull Integer productId,
-        @NotNull Integer locationId,
+        @NotNull(message = "Product ID is required")
+        Integer productId,
+        
+        @NotNull(message = "Location ID is required")
+        Integer locationId,
+        
         StockType stockType,
-        @NotNull Integer quantity,
-        String batchNumber,
+        
+        @NotNull(message = "Quantity is required")
+        Integer quantity,
+        
+        String batchNumber, // Optional
+        
         Integer cost,
         Integer supplierId,
         LocalDate manufacturingDate,

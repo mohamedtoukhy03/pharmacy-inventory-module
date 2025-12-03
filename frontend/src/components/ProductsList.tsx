@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
-import { 
-  Search, 
-  Plus, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  Search,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   X,
   Edit,
@@ -15,7 +15,7 @@ import {
   BarChart3,
   Loader2
 } from 'lucide-react';
-import { useProducts, useDeleteProduct, useCategories } from '@/lib/query';
+import { useProducts, useDeleteProduct, useCreateProduct, useCategories } from '@/lib/query';
 import { formatCurrency } from '@/lib/utils';
 
 interface ProductsListProps {
@@ -55,13 +55,13 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
   // Fetch products with filters (using debounced search)
   const filters = useMemo(() => ({
     page: currentPage,
-    size: pageSize,
+    pageSize: pageSize,
     sortBy,
     sortDirection,
     ...(debouncedSearch && { search: debouncedSearch }),
     ...(selectedCategory && { categoryId: selectedCategory }),
     ...(isDrugFilter !== null && { isDrug: isDrugFilter }),
-    ...(controlledFilter !== null && { isControlled: controlledFilter }),
+    ...(controlledFilter !== null && { controlledSubstance: controlledFilter }),
   }), [currentPage, pageSize, sortBy, sortDirection, debouncedSearch, selectedCategory, isDrugFilter, controlledFilter]);
 
   const { data: productsData, isLoading, isError, error } = useProducts(filters);
@@ -69,9 +69,9 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
   const deleteMutation = useDeleteProduct();
 
   // Fetch KPI data with separate queries
-  const { data: totalProductsData } = useProducts({ page: 0, size: 1 });
-  const { data: controlledData } = useProducts({ page: 0, size: 1, isControlled: true });
-  const { data: drugsData } = useProducts({ page: 0, size: 1, isDrug: true });
+  const { data: totalProductsData } = useProducts({ page: 0, pageSize: 1 });
+  const { data: controlledData } = useProducts({ page: 0, pageSize: 1, controlledSubstance: true });
+  const { data: drugsData } = useProducts({ page: 0, pageSize: 1, isDrug: true });
 
   const categories = ['كل التصنيفات', ...(categoriesData?.map(c => c.name) || [])];
 
@@ -130,15 +130,14 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
           >
             <div className="flex items-center justify-between mb-4">
               <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  stat.color === 'blue'
+                className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color === 'blue'
                     ? 'bg-blue-100 text-blue-600'
                     : stat.color === 'green'
-                    ? 'bg-green-100 text-green-600'
-                    : stat.color === 'red'
-                    ? 'bg-red-100 text-red-600'
-                    : 'bg-yellow-100 text-yellow-600'
-                }`}
+                      ? 'bg-green-100 text-green-600'
+                      : stat.color === 'red'
+                        ? 'bg-red-100 text-red-600'
+                        : 'bg-yellow-100 text-yellow-600'
+                  }`}
               >
                 <stat.icon className="w-6 h-6" />
               </div>
@@ -174,11 +173,10 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-colors ${
-                showFilters
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-colors ${showFilters
                   ? 'bg-blue-50 border-blue-200 text-blue-700'
                   : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <Filter className="w-5 h-5" />
               <span>فلاتر</span>
@@ -208,21 +206,19 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setIsDrugFilter(isDrugFilter === true ? null : true)}
-                    className={`flex-1 px-4 py-2.5 rounded-lg border transition-colors ${
-                      isDrugFilter === true
+                    className={`flex-1 px-4 py-2.5 rounded-lg border transition-colors ${isDrugFilter === true
                         ? 'bg-green-50 border-green-200 text-green-700'
                         : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     دواء
                   </button>
                   <button
                     onClick={() => setIsDrugFilter(isDrugFilter === false ? null : false)}
-                    className={`flex-1 px-4 py-2.5 rounded-lg border transition-colors ${
-                      isDrugFilter === false
+                    className={`flex-1 px-4 py-2.5 rounded-lg border transition-colors ${isDrugFilter === false
                         ? 'bg-gray-100 border-gray-300 text-gray-700'
                         : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     غير دواء
                   </button>
@@ -236,11 +232,10 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
                     onClick={() =>
                       setControlledFilter(controlledFilter === true ? null : true)
                     }
-                    className={`flex-1 px-4 py-2.5 rounded-lg border transition-colors ${
-                      controlledFilter === true
+                    className={`flex-1 px-4 py-2.5 rounded-lg border transition-colors ${controlledFilter === true
                         ? 'bg-red-50 border-red-200 text-red-700'
                         : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     خاضع للرقابة
                   </button>
@@ -248,11 +243,10 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
                     onClick={() =>
                       setControlledFilter(controlledFilter === false ? null : false)
                     }
-                    className={`flex-1 px-4 py-2.5 rounded-lg border transition-colors ${
-                      controlledFilter === false
+                    className={`flex-1 px-4 py-2.5 rounded-lg border transition-colors ${controlledFilter === false
                         ? 'bg-gray-100 border-gray-300 text-gray-700'
                         : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     غير خاضع
                   </button>
@@ -336,7 +330,7 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
                         {product.sku}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">{product.genericName || '-'}</td>
+                    <td className="px-6 py-4 text-gray-600">{product.scientificName || '-'}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {product.isDrug && (
@@ -352,7 +346,7 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">{product.primaryCategoryName || '-'}</td>
+                    <td className="px-6 py-4 text-gray-600">{product.primaryCategory || '-'}</td>
                     <td className="px-6 py-4 text-gray-600">{product.manufacturer || '-'}</td>
                     <td className="px-6 py-4">
                       <span className="font-medium text-gray-900">
@@ -400,7 +394,7 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
               <span className="font-medium">{productsData.totalElements}</span> منتج
             </div>
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
                 disabled={currentPage === 0}
                 className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -412,17 +406,16 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-10 h-10 rounded-lg transition-colors ${
-                      currentPage === page
+                    className={`w-10 h-10 rounded-lg transition-colors ${currentPage === page
                         ? 'bg-blue-600 text-white'
                         : 'border border-gray-200 hover:bg-gray-50'
-                    }`}
+                      }`}
                   >
                     {page + 1}
                   </button>
                 );
               })}
-              <button 
+              <button
                 onClick={() => setCurrentPage(Math.min(productsData.totalPages - 1, currentPage + 1))}
                 disabled={currentPage >= productsData.totalPages - 1}
                 className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -442,8 +435,36 @@ export function ProductsList({ onNavigate }: ProductsListProps) {
 }
 
 function CreateProductDialog({ onClose }: { onClose: () => void }) {
-  const [isDrug, setIsDrug] = useState(false);
-  const [isControlled, setIsControlled] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    barcode: '',
+    sku: '',
+    scientificName: '',
+    description: '',
+    cost: 0,
+    sellingPrice: 0,
+    isDrug: false,
+    controlledSubstance: false,
+  });
+
+  const createMutation = useCreateProduct();
+
+  const handleSave = () => {
+    if (!formData.name) {
+      alert('الرجاء إدخال اسم المنتج');
+      return;
+    }
+
+    createMutation.mutate(formData, {
+      onSuccess: () => {
+        alert('تم إنشاء المنتج بنجاح');
+        onClose();
+      },
+      onError: (error: any) => {
+        alert('فشل إنشاء المنتج: ' + (error?.response?.data?.message || error?.message || 'خطأ غير معروف'));
+      }
+    });
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -469,6 +490,8 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
               <input
                 type="text"
                 placeholder="أدخل اسم المنتج"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -478,6 +501,8 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
               <input
                 type="text"
                 placeholder="6234567890123"
+                value={formData.barcode}
+                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -487,6 +512,8 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
               <input
                 type="text"
                 placeholder="PRD-001"
+                value={formData.sku}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -496,6 +523,8 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
               <input
                 type="text"
                 placeholder="Generic Name"
+                value={formData.scientificName}
+                onChange={(e) => setFormData({ ...formData, scientificName: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -505,6 +534,8 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
               <textarea
                 rows={3}
                 placeholder="وصف المنتج..."
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -550,20 +581,25 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-2">سعر البيع</label>
+              <label className="block text-sm text-gray-700 mb-2">التكلفة</label>
               <input
                 type="number"
                 step="0.01"
                 placeholder="0.00"
+                value={formData.cost}
+                onChange={(e) => setFormData({ ...formData, cost: Number(e.target.value) })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-700 mb-2">كمية إعادة الطلب</label>
+              <label className="block text-sm text-gray-700 mb-2">سعر البيع</label>
               <input
                 type="number"
-                placeholder="100"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.sellingPrice}
+                onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -595,15 +631,13 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
                   <div className="text-sm text-gray-600">حدد إذا كان المنتج دواء</div>
                 </div>
                 <button
-                  onClick={() => setIsDrug(!isDrug)}
-                  className={`relative w-14 h-8 rounded-full transition-colors ${
-                    isDrug ? 'bg-green-600' : 'bg-gray-300'
-                  }`}
+                  onClick={() => setFormData({ ...formData, isDrug: !formData.isDrug })}
+                  className={`relative w-14 h-8 rounded-full transition-colors ${formData.isDrug ? 'bg-green-600' : 'bg-gray-300'
+                    }`}
                 >
                   <div
-                    className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      isDrug ? 'right-1' : 'left-1'
-                    }`}
+                    className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${formData.isDrug ? 'right-1' : 'left-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -616,15 +650,13 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
                   </div>
                 </div>
                 <button
-                  onClick={() => setIsControlled(!isControlled)}
-                  className={`relative w-14 h-8 rounded-full transition-colors ${
-                    isControlled ? 'bg-red-600' : 'bg-gray-300'
-                  }`}
+                  onClick={() => setFormData({ ...formData, controlledSubstance: !formData.controlledSubstance })}
+                  className={`relative w-14 h-8 rounded-full transition-colors ${formData.controlledSubstance ? 'bg-red-600' : 'bg-gray-300'
+                    }`}
                 >
                   <div
-                    className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                      isControlled ? 'right-1' : 'left-1'
-                    }`}
+                    className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${formData.controlledSubstance ? 'right-1' : 'left-1'
+                      }`}
                   />
                 </button>
               </div>
@@ -640,7 +672,12 @@ function CreateProductDialog({ onClose }: { onClose: () => void }) {
           >
             إلغاء
           </button>
-          <button className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <button
+            onClick={handleSave}
+            disabled={createMutation.isPending}
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             حفظ المنتج
           </button>
         </div>

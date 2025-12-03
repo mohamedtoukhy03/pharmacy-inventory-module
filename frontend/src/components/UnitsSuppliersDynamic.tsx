@@ -16,9 +16,11 @@ import {
 import {
   useMeasurementUnits,
   useCreateMeasurementUnit,
+  useUpdateMeasurementUnit,
   useDeleteMeasurementUnit,
   useSuppliers,
   useCreateSupplier,
+  useUpdateSupplier,
   useDeleteSupplier
 } from '@/lib/query';
 
@@ -27,6 +29,7 @@ type Tab = 'units' | 'suppliers';
 export function UnitsSuppliers() {
   const [activeTab, setActiveTab] = useState<Tab>('units');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
   const [searchText, setSearchText] = useState('');
 
   return (
@@ -83,16 +86,34 @@ export function UnitsSuppliers() {
 
       {/* Tab Content */}
       {activeTab === 'units' ? (
-        <UnitsTab searchText={searchText} setSearchText={setSearchText} />
+        <UnitsTab 
+          searchText={searchText} 
+          setSearchText={setSearchText}
+          onEdit={(item) => {
+            setEditItem(item);
+            setShowCreateDialog(true);
+          }}
+        />
       ) : (
-        <SuppliersTab searchText={searchText} setSearchText={setSearchText} />
+        <SuppliersTab 
+          searchText={searchText} 
+          setSearchText={setSearchText}
+          onEdit={(item) => {
+            setEditItem(item);
+            setShowCreateDialog(true);
+          }}
+        />
       )}
 
-      {/* Create Dialog */}
+      {/* Create/Edit Dialog */}
       {showCreateDialog && (
         <CreateDialog
           type={activeTab}
-          onClose={() => setShowCreateDialog(false)}
+          editItem={editItem}
+          onClose={() => {
+            setShowCreateDialog(false);
+            setEditItem(null);
+          }}
         />
       )}
     </div>
@@ -101,10 +122,12 @@ export function UnitsSuppliers() {
 
 function UnitsTab({
   searchText,
-  setSearchText
+  setSearchText,
+  onEdit
 }: {
   searchText: string;
   setSearchText: (value: string) => void;
+  onEdit: (item: any) => void;
 }) {
   const { data: unitsData, isLoading, isError } = useMeasurementUnits();
   const deleteMutation = useDeleteMeasurementUnit();
@@ -170,7 +193,9 @@ function UnitsTab({
                     <Ruler className="w-6 h-6" />
                   </div>
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => onEdit(unit)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
@@ -197,10 +222,12 @@ function UnitsTab({
 
 function SuppliersTab({
   searchText,
-  setSearchText
+  setSearchText,
+  onEdit
 }: {
   searchText: string;
   setSearchText: (value: string) => void;
+  onEdit: (item: any) => void;
 }) {
   const { data: suppliersData, isLoading, isError } = useSuppliers({ name: searchText });
   const deleteMutation = useDeleteSupplier();
@@ -270,41 +297,43 @@ function SuppliersTab({
                       <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
                         <Users className="w-5 h-5" />
                       </div>
-                      <span className="font-medium">{supplier.name}</span>
+                      <span className="font-medium">{supplier.supplierName}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-gray-600">{supplier.status || '-'}</td>
+                  <td className="px-6 py-4 text-gray-600">{supplier.activeStatus || '-'}</td>
                   <td className="px-6 py-4 text-gray-600">
-                    {supplier.contact?.phone ? (
+                    {supplier.supplierPhone ? (
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4 text-gray-400" />
-                        {supplier.contact.phone}
+                        {supplier.supplierPhone}
                       </div>
                     ) : '-'}
                   </td>
                   <td className="px-6 py-4 text-gray-600">
-                    {supplier.contact?.email ? (
+                    {supplier.supplierEmail ? (
                       <div className="flex items-center gap-2">
                         <Mail className="w-4 h-4 text-gray-400" />
-                        {supplier.contact.email}
+                        {supplier.supplierEmail}
                       </div>
                     ) : '-'}
                   </td>
                   <td className="px-6 py-4 text-gray-600">
-                    {supplier.address ? (
+                    {supplier.country ? (
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-gray-400" />
-                        {supplier.address}
+                        {supplier.country}
                       </div>
                     ) : '-'}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => onEdit(supplier)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(supplier.id.toString(), supplier.name)}
+                        onClick={() => handleDelete(supplier.id.toString(), supplier.supplierName)}
                         disabled={deleteMutation.isPending}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                       >
@@ -322,37 +351,53 @@ function SuppliersTab({
   );
 }
 
-function CreateDialog({ type, onClose }: { type: Tab; onClose: () => void }) {
+function CreateDialog({ type, editItem, onClose }: { type: Tab; editItem?: any; onClose: () => void }) {
   const [formData, setFormData] = useState<any>({
-    name: '',
-    abbreviation: '',
+    name: editItem?.name || editItem?.supplierName || '',
+    abbreviation: editItem?.code || '',
     contactPerson: '',
-    phone: '',
-    email: '',
-    address: ''
+    phone: editItem?.phone || editItem?.supplierPhone || '',
+    email: editItem?.email || editItem?.supplierEmail || '',
+    country: editItem?.country || ''
   });
 
   const createUnitMutation = useCreateMeasurementUnit();
+  const updateUnitMutation = useUpdateMeasurementUnit();
   const createSupplierMutation = useCreateSupplier();
+  const updateSupplierMutation = useUpdateSupplier();
 
   const handleSubmit = () => {
     if (type === 'units') {
-      createUnitMutation.mutate(
-        { name: formData.name, code: formData.abbreviation, description: '' },
-        { onSuccess: () => onClose() }
-      );
+      if (editItem) {
+        updateUnitMutation.mutate(
+          { unitId: editItem.id.toString(), data: { name: formData.name, code: formData.abbreviation, description: '' } },
+          { onSuccess: () => onClose() }
+        );
+      } else {
+        createUnitMutation.mutate(
+          { name: formData.name, code: formData.abbreviation, description: '' },
+          { onSuccess: () => onClose() }
+        );
+      }
     } else {
-      createSupplierMutation.mutate({
-        name: formData.name,
-        contact: {
-          phone: formData.phone,
-          email: formData.email
-        },
-        address: formData.address,
-        status: 'active'
-      }, {
-        onSuccess: () => onClose()
-      });
+      const supplierData = {
+        supplierName: formData.name,
+        supplierPhone: formData.phone,
+        supplierEmail: formData.email,
+        country: formData.country,
+        activeStatus: 'active' as const
+      };
+      
+      if (editItem) {
+        updateSupplierMutation.mutate(
+          { supplierId: editItem.id.toString(), data: supplierData },
+          { onSuccess: () => onClose() }
+        );
+      } else {
+        createSupplierMutation.mutate(supplierData, {
+          onSuccess: () => onClose()
+        });
+      }
     }
   };
 
@@ -363,7 +408,10 @@ function CreateDialog({ type, onClose }: { type: Tab; onClose: () => void }) {
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-xl">
-            {type === 'units' ? 'إضافة وحدة قياس جديدة' : 'إضافة مورد جديد'}
+            {editItem
+              ? (type === 'units' ? 'تعديل وحدة القياس' : 'تعديل المورد')
+              : (type === 'units' ? 'إضافة وحدة قياس جديدة' : 'إضافة مورد جديد')
+            }
           </h2>
           <button
             onClick={onClose}

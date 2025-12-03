@@ -16,6 +16,7 @@ import { LocationsListDynamic as LocationsList } from './components/LocationsLis
 import { LocationDetail } from './components/LocationDetail';
 import { StockManagementDynamic as StockManagement } from './components/StockManagementDynamic';
 import { BatchDetailDynamic as BatchDetail } from './components/BatchDetailDynamic';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 type Page = 
   | 'products'
@@ -59,35 +60,61 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'products':
-        return <ProductsList onNavigate={handleNavigate} />;
+        return (
+          <ErrorBoundary fallbackMessage="خطأ في تحميل صفحة المنتجات">
+            <ProductsList onNavigate={handleNavigate} />
+          </ErrorBoundary>
+        );
       case 'product-detail':
         return (
-          <ProductDetail 
-            productId={selectedProductId!} 
-            onNavigate={handleNavigate}
-          />
+          <ErrorBoundary fallbackMessage="خطأ في تحميل تفاصيل المنتج">
+            <ProductDetail 
+              productId={selectedProductId!} 
+              onNavigate={handleNavigate}
+            />
+          </ErrorBoundary>
         );
       case 'categories-ingredients':
-        return <CategoriesIngredients />;
+        return (
+          <ErrorBoundary fallbackMessage="خطأ في تحميل التصنيفات والمكونات">
+            <CategoriesIngredients />
+          </ErrorBoundary>
+        );
       case 'units-suppliers':
-        return <UnitsSuppliers />;
+        return (
+          <ErrorBoundary fallbackMessage="خطأ في تحميل الوحدات والموردين">
+            <UnitsSuppliers />
+          </ErrorBoundary>
+        );
       case 'locations':
-        return <LocationsList onNavigate={handleNavigate} />;
+        return (
+          <ErrorBoundary fallbackMessage="خطأ في تحميل صفحة المواقع">
+            <LocationsList onNavigate={handleNavigate} />
+          </ErrorBoundary>
+        );
       case 'location-detail':
         return (
-          <LocationDetail 
-            locationId={selectedLocationId!}
-            onNavigate={handleNavigate}
-          />
+          <ErrorBoundary fallbackMessage="خطأ في تحميل تفاصيل الموقع">
+            <LocationDetail 
+              locationId={selectedLocationId!}
+              onNavigate={handleNavigate}
+            />
+          </ErrorBoundary>
         );
       case 'stock-management':
-        return <StockManagement onNavigate={handleNavigate} />;
+        return (
+          <ErrorBoundary fallbackMessage="خطأ في تحميل إدارة المخزون">
+            <StockManagement onNavigate={handleNavigate} />
+          </ErrorBoundary>
+        );
       case 'batch-detail':
         return (
-          <BatchDetail 
-            batchId={selectedBatchId!}
-            onNavigate={handleNavigate}
-          />
+          <ErrorBoundary fallbackMessage="خطأ في تحميل تفاصيل الدفعة">
+            <BatchDetail 
+              batchId={selectedBatchId!}
+              onNavigate={handleNavigate}
+            />
+          </ErrorBoundary>
         );
       default:
         return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   Edit,
@@ -10,8 +10,10 @@ import {
   Building2,
   Layers,
   Package,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
+import { useLocation, useUpdateLocation, useDeleteLocation, useLocationShelves, useCreateShelf, useDeleteShelf } from '@/lib/query';
 
 interface LocationDetailProps {
   locationId: string;
@@ -21,68 +23,94 @@ interface LocationDetailProps {
 export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showAddShelfDialog, setShowAddShelfDialog] = useState(false);
+  const [formData, setFormData] = useState<any>({});
 
-  // Mock data
-  const location = {
-    id: locationId,
-    name: 'الفرع الرئيسي - الرياض',
-    type: 'فرع',
-    status: 'نشط',
-    address: 'طريق الملك فهد، الرياض',
-    isDirectToMain: true,
-    parentLocation: null
+  // Fetch location data
+  const { data: location, isLoading, isError } = useLocation(locationId);
+  const { data: shelvesData = [] } = useLocationShelves(locationId);
+
+  // Mutations
+  const updateMutation = useUpdateLocation();
+  const deleteMutation = useDeleteLocation();
+
+  // Initialize form data when location is loaded
+  useEffect(() => {
+    if (location) {
+      setFormData({
+        locationName: location.locationName || '',
+        locationType: location.locationType || '',
+        status: location.status || '',
+        address: location.address || '',
+        parentLocationId: location.parentLocationId || null,
+        isDirectToMain: location.isDirectToMain || false
+      });
+    }
+  }, [location]);
+
+  const handleSave = () => {
+    updateMutation.mutate(
+      { locationId, data: formData },
+      {
+        onSuccess: () => {
+          setIsEditing(false);
+          alert('تم حفظ الموقع بنجاح');
+        },
+        onError: (error: any) => {
+          alert('فشل حفظ الموقع: ' + (error?.message || 'خطأ غير معروف'));
+        }
+      }
+    );
   };
 
-  const shelves = [
-    {
-      id: '1',
-      code: 'A-001',
-      dispatchMethod: 'FEFO',
-      onHandQty: 1250,
-      capacity: 2000,
-      productsCount: 45
-    },
-    {
-      id: '2',
-      code: 'A-002',
-      dispatchMethod: 'FIFO',
-      onHandQty: 890,
-      capacity: 2000,
-      productsCount: 32
-    },
-    {
-      id: '3',
-      code: 'B-001',
-      dispatchMethod: 'FEFO',
-      onHandQty: 1567,
-      capacity: 2000,
-      productsCount: 67
-    },
-    {
-      id: '4',
-      code: 'B-002',
-      dispatchMethod: 'LIFO',
-      onHandQty: 456,
-      capacity: 2000,
-      productsCount: 23
-    },
-    {
-      id: '5',
-      code: 'C-001',
-      dispatchMethod: 'FEFO',
-      onHandQty: 1823,
-      capacity: 2000,
-      productsCount: 89
-    },
-    {
-      id: '6',
-      code: 'C-002',
-      dispatchMethod: 'FIFO',
-      onHandQty: 234,
-      capacity: 2000,
-      productsCount: 12
+  const handleDelete = () => {
+    if (confirm('هل تريد حذف هذا الموقع؟')) {
+      deleteMutation.mutate(locationId, {
+        onSuccess: () => onNavigate('locations'),
+        onError: (error: any) => {
+          alert('فشل حذف الموقع: ' + (error?.message || 'خطأ غير معروف'));
+        }
+      });
     }
-  ];
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (isError || !location) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <p className="text-red-600 mb-2">فشل تحميل بيانات الموقع</p>
+          <button onClick={() => onNavigate('locations')} className="text-blue-600">
+            العودة للمواقع
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const typeLabels: { [key: string]: string } = {
+    'warehouse': 'مستودع',
+    'branch': 'فرع',
+    'external': 'خارجي',
+    'supplier': 'مورد',
+    'quarantine': 'حجر صحي'
+  };
+
+  const statusLabels: { [key: string]: string } = {
+    'active': 'نشط',
+    'inactive': 'غير نشط'
+  };
+
+  const shelves = shelvesData;
+
+  // Calculate stats - no capacity field in backend
+  const totalStored = shelves.reduce((acc, shelf) => acc + (shelf.onHandQty || 0), 0);
 
   const stats = [
     {
@@ -93,19 +121,19 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
     },
     {
       label: 'الكمية المخزنة',
-      value: shelves.reduce((acc, shelf) => acc + shelf.onHandQty, 0).toString(),
+      value: totalStored.toLocaleString(),
       icon: Package,
       color: 'green'
     },
     {
-      label: 'السعة الإجمالية',
-      value: (shelves.length * 2000).toString(),
+      label: 'طرق الصرف المستخدمة',
+      value: new Set(shelves.map(s => s.dispatchMethod).filter(Boolean)).size.toString(),
       icon: Building2,
       color: 'purple'
     },
     {
-      label: 'نسبة الامتلاء',
-      value: Math.round((shelves.reduce((acc, shelf) => acc + shelf.onHandQty, 0) / (shelves.length * 2000)) * 100) + '%',
+      label: 'الأرفف النشطة',
+      value: shelves.filter(s => (s.onHandQty || 0) > 0).length.toString(),
       icon: AlertCircle,
       color: 'orange'
     }
@@ -126,42 +154,50 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
           المواقع
         </button>
         <ChevronLeft className="w-4 h-4" />
-        <span className="text-gray-900">{location.name}</span>
+        <span className="text-gray-900">{location.locationName}</span>
       </div>
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl">{location.name}</h1>
+            <h1 className="text-2xl">{location.locationName}</h1>
             <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm">
-              {location.type}
+              {typeLabels[location.locationType] || location.locationType}
             </span>
             <span
-              className={`px-3 py-1 rounded-lg text-sm ${
-                location.status === 'نشط'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-yellow-100 text-yellow-700'
-              }`}
+              className={`px-3 py-1 rounded-lg text-sm ${location.status === 'active'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-yellow-100 text-yellow-700'
+                }`}
             >
-              {location.status}
+              {statusLabels[location.status] || location.status}
             </span>
           </div>
           <p className="text-gray-600 flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            {location.address}
+            {location.address || 'لا يوجد عنوان'}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              <Edit className="w-5 h-5" />
-              <span>تعديل</span>
-            </button>
+            <>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+              >
+                <Edit className="w-5 h-5" />
+                <span>تعديل</span>
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span>حذف</span>
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -171,9 +207,17 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
                 <X className="w-5 h-5" />
                 <span>إلغاء</span>
               </button>
-              <button className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors">
-                <Save className="w-5 h-5" />
-                <span>حفظ التعديلات</span>
+              <button
+                onClick={handleSave}
+                disabled={updateMutation.isPending}
+                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Save className="w-5 h-5" />
+                )}
+                <span>حفظ الموقع</span>
               </button>
             </>
           )}
@@ -189,15 +233,14 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
           >
             <div className="flex items-center justify-between mb-4">
               <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  stat.color === 'blue'
-                    ? 'bg-blue-100 text-blue-600'
-                    : stat.color === 'green'
+                className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color === 'blue'
+                  ? 'bg-blue-100 text-blue-600'
+                  : stat.color === 'green'
                     ? 'bg-green-100 text-green-600'
                     : stat.color === 'purple'
-                    ? 'bg-purple-100 text-purple-600'
-                    : 'bg-orange-100 text-orange-600'
-                }`}
+                      ? 'bg-purple-100 text-purple-600'
+                      : 'bg-orange-100 text-orange-600'
+                  }`}
               >
                 <stat.icon className="w-6 h-6" />
               </div>
@@ -217,7 +260,8 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
               <label className="block text-sm text-gray-600 mb-2">الاسم</label>
               <input
                 type="text"
-                defaultValue={location.name}
+                value={formData.locationName || ''}
+                onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -225,31 +269,37 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
             <div>
               <label className="block text-sm text-gray-600 mb-2">النوع</label>
               <select
-                defaultValue={location.type}
+                value={formData.locationType || ''}
+                onChange={(e) => setFormData({ ...formData, locationType: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option>فرع</option>
-                <option>مستودع</option>
-                <option>خارجي</option>
-                <option>حجر صحي</option>
+                <option value="warehouse">مستودع</option>
+                <option value="branch">فرع</option>
+                <option value="external">خارجي</option>
+                <option value="supplier">مورد</option>
+                <option value="quarantine">حجر صحي</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm text-gray-600 mb-2">الحالة</label>
               <select
-                defaultValue={location.status}
+                value={formData.status || ''}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option>نشط</option>
-                <option>معلق</option>
-                <option>غير نشط</option>
+                <option value="active">نشط</option>
+                <option value="inactive">غير نشط</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm text-gray-600 mb-2">الموقع الرئيسي</label>
-              <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select
+                value={formData.parentLocationId || ''}
+                onChange={(e) => setFormData({ ...formData, parentLocationId: e.target.value ? Number(e.target.value) : null })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <option value="">بدون</option>
                 <option>مستودع الدمام</option>
                 <option>فرع جدة</option>
@@ -260,7 +310,8 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
               <label className="block text-sm text-gray-600 mb-2">العنوان</label>
               <textarea
                 rows={3}
-                defaultValue={location.address}
+                value={formData.address || ''}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -299,20 +350,14 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
                 <th className="text-right px-6 py-4 text-sm text-gray-600">
                   الكمية المخزنة
                 </th>
-                <th className="text-right px-6 py-4 text-sm text-gray-600">السعة</th>
-                <th className="text-right px-6 py-4 text-sm text-gray-600">
-                  نسبة الامتلاء
-                </th>
-                <th className="text-right px-6 py-4 text-sm text-gray-600">
-                  عدد المنتجات
-                </th>
                 <th className="text-right px-6 py-4 text-sm text-gray-600">إجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {shelves.map((shelf) => {
-                const fillPercentage = (shelf.onHandQty / shelf.capacity) * 100;
-                
+                const onHandQty = shelf.onHandQty || 0;
+                const dispatchMethod = shelf.dispatchMethod || '-';
+
                 return (
                   <tr
                     key={shelf.id}
@@ -323,57 +368,21 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white">
                           <Layers className="w-5 h-5" />
                         </div>
-                        <span className="font-medium text-gray-900">{shelf.code}</span>
+                        <span className="font-medium text-gray-900">رف #{shelf.id}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm">
-                        {dispatchMethodLabels[shelf.dispatchMethod]}
+                        {dispatchMethodLabels[dispatchMethod] || dispatchMethod}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="font-medium text-gray-900">
-                        {shelf.onHandQty.toLocaleString()}
+                        {onHandQty.toLocaleString()}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-gray-600">
-                        {shelf.capacity.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              fillPercentage >= 90
-                                ? 'bg-red-500'
-                                : fillPercentage >= 70
-                                ? 'bg-yellow-500'
-                                : 'bg-green-500'
-                            }`}
-                            style={{ width: `${fillPercentage}%` }}
-                          />
-                        </div>
-                        <span className="text-sm text-gray-600 w-12">
-                          {fillPercentage.toFixed(0)}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm">
-                        {shelf.productsCount} منتج
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <ShelfActions shelfId={shelf.id} shelfLabel={`رف #${shelf.id}`} />
                     </td>
                   </tr>
                 );
@@ -385,13 +394,73 @@ export function LocationDetail({ locationId, onNavigate }: LocationDetailProps) 
 
       {/* Add Shelf Dialog */}
       {showAddShelfDialog && (
-        <AddShelfDialog onClose={() => setShowAddShelfDialog(false)} />
+        <AddShelfDialog
+          locationId={locationId}
+          onClose={() => setShowAddShelfDialog(false)}
+        />
       )}
     </div>
   );
 }
 
-function AddShelfDialog({ onClose }: { onClose: () => void }) {
+function ShelfActions({ shelfId, shelfLabel }: { shelfId: string; shelfLabel: string }) {
+  const deleteShelfMutation = useDeleteShelf();
+
+  const handleDelete = () => {
+    if (confirm(`هل تريد حذف "${shelfLabel}"؟`)) {
+      deleteShelfMutation.mutate(shelfId);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <button
+        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+        title="تعديل"
+      >
+        <Edit className="w-4 h-4" />
+      </button>
+      <button
+        onClick={handleDelete}
+        disabled={deleteShelfMutation.isPending}
+        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+        title="حذف"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+function AddShelfDialog({ locationId, onClose }: { locationId: string; onClose: () => void }) {
+  const [formData, setFormData] = useState({
+    dispatchMethod: 'FEFO',
+    onHandQty: 0,
+  });
+
+  const createShelfMutation = useCreateShelf();
+
+  const handleSave = async () => {
+    // Validate form - backend will validate locationId requirement
+    const requestData = {
+      locationId: parseInt(locationId),
+      onHandQty: formData.onHandQty,
+      dispatchMethod: formData.dispatchMethod
+    };
+
+    createShelfMutation.mutate({ locationId, data: requestData });
+    // The mutation will handle success/error via toast in the hook
+    // Close dialog on success
+    if (!createShelfMutation.isError) {
+      // Wait a bit for the mutation to complete
+      setTimeout(() => {
+        if (!createShelfMutation.isError) {
+          onClose();
+        }
+      }, 500);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full">
@@ -410,20 +479,13 @@ function AddShelfDialog({ onClose }: { onClose: () => void }) {
         <div className="p-6 space-y-4">
           <div>
             <label className="block text-sm text-gray-700 mb-2">
-              رقم/رمز الرف <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="مثال: A-001"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-700 mb-2">
               طريقة الصرف <span className="text-red-500">*</span>
             </label>
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select
+              value={formData.dispatchMethod}
+              onChange={(e) => setFormData({ ...formData, dispatchMethod: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
               <option value="FEFO">الأقرب انتهاء أولاً (FEFO)</option>
               <option value="FIFO">الوارد أولاً صادر أولاً (FIFO)</option>
               <option value="LIFO">الوارد أخيراً صادر أولاً (LIFO)</option>
@@ -433,24 +495,13 @@ function AddShelfDialog({ onClose }: { onClose: () => void }) {
 
           <div>
             <label className="block text-sm text-gray-700 mb-2">
-              السعة <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              placeholder="2000"
-              defaultValue={2000}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-700 mb-2">
               الكمية الحالية
             </label>
             <input
               type="number"
               placeholder="0"
-              defaultValue={0}
+              value={formData.onHandQty}
+              onChange={(e) => setFormData({ ...formData, onHandQty: Number(e.target.value) })}
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -460,11 +511,17 @@ function AddShelfDialog({ onClose }: { onClose: () => void }) {
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-6 py-2.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            disabled={createShelfMutation.isPending}
+            className="px-6 py-2.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             إلغاء
           </button>
-          <button className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <button
+            onClick={handleSave}
+            disabled={createShelfMutation.isPending}
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {createShelfMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
             حفظ الرف
           </button>
         </div>

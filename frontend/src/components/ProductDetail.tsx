@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ChevronLeft,
   Edit,
@@ -11,10 +11,18 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { 
-  useProduct, 
-  useUpdateProduct, 
-  useDeleteProduct
+import {
+  useProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  useProductCategories,
+  useProductIngredients,
+  useCategories,
+  useIngredients,
+  useAddProductCategory,
+  useRemoveProductCategory,
+  useAddProductIngredient,
+  useRemoveProductIngredient
 } from '@/lib/query';
 
 interface ProductDetailProps {
@@ -27,20 +35,76 @@ type Tab = 'overview' | 'categories' | 'ingredients';
 export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [isEditing, setIsEditing] = useState(false);
-  const [isDrug, setIsDrug] = useState(false);
-  const [isControlled, setIsControlled] = useState(false);
+  const [formData, setFormData] = useState<any>({});
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [showAddIngredientDialog, setShowAddIngredientDialog] = useState(false);
+  const [ingredientFormData, setIngredientFormData] = useState({ ingredientId: '', amount: 0 });
 
   // Fetch product data
   const { data: product, isLoading, isError } = useProduct(productId);
+  const { data: productCategories = [] } = useProductCategories(productId);
+  const { data: productIngredients = [] } = useProductIngredients(productId);
+  const { data: allCategories = [] } = useCategories();
+  const { data: allIngredients = [] } = useIngredients();
 
   // Mutations
   const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
+  const addCategoryMutation = useAddProductCategory();
+  const removeCategoryMutation = useRemoveProductCategory();
+  const addIngredientMutation = useAddProductIngredient();
+  const removeIngredientMutation = useRemoveProductIngredient();
+
+  // Prepare data for rendering
+  const categories = productCategories;
+  const ingredients = productIngredients;
+  const availableCategories = allCategories.filter(
+    cat => !categories.find(c => c.id === cat.id)
+  );
+  const availableIngredients = allIngredients.filter(
+    ing => !ingredients.find(i => i.ingredientId === ing.id)
+  );
+
+  // Initialize form data when product is loaded
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        name: product.name || '',
+        barcode: product.barcode || '',
+        sku: product.sku || '',
+        scientificName: product.scientificName || '',
+        description: product.description || '',
+        cost: product.cost || 0,
+        sellingPrice: product.sellingPrice || 0,
+        isDrug: product.isDrug || false,
+        controlledSubstance: product.controlledSubstance || false,
+        measurementUnitId: product.measurementUnitId || null
+      });
+    }
+  }, [product]);
+
+  const handleSave = () => {
+    updateMutation.mutate(
+      { productId, data: formData },
+      {
+        onSuccess: () => {
+          setIsEditing(false);
+          alert('تم حفظ المنتج بنجاح');
+        },
+        onError: (error: any) => {
+          alert('فشل حفظ المنتج: ' + (error?.message || 'خطأ غير معروف'));
+        }
+      }
+    );
+  };
 
   const handleDelete = () => {
     if (confirm('هل تريد حذف هذا المنتج؟')) {
       deleteMutation.mutate(productId, {
-        onSuccess: () => onNavigate('products')
+        onSuccess: () => onNavigate('products'),
+        onError: (error: any) => {
+          alert('فشل حذف المنتج: ' + (error?.message || 'خطأ غير معروف'));
+        }
       });
     }
   };
@@ -125,9 +189,17 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 <X className="w-5 h-5" />
                 <span>إلغاء</span>
               </button>
-              <button className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors">
-                <Save className="w-5 h-5" />
-                <span>حفظ التعديلات</span>
+              <button
+                onClick={handleSave}
+                disabled={updateMutation.isPending}
+                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {updateMutation.isPending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Save className="w-5 h-5" />
+                )}
+                <span>حفظ المنتج</span>
               </button>
             </>
           )}
@@ -139,31 +211,28 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`pb-4 px-2 border-b-2 transition-colors ${
-              activeTab === 'overview'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            className={`pb-4 px-2 border-b-2 transition-colors ${activeTab === 'overview'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
           >
             نظرة عامة
           </button>
           <button
             onClick={() => setActiveTab('categories')}
-            className={`pb-4 px-2 border-b-2 transition-colors ${
-              activeTab === 'categories'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            className={`pb-4 px-2 border-b-2 transition-colors ${activeTab === 'categories'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
           >
             التصنيفات
           </button>
           <button
             onClick={() => setActiveTab('ingredients')}
-            className={`pb-4 px-2 border-b-2 transition-colors ${
-              activeTab === 'ingredients'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            className={`pb-4 px-2 border-b-2 transition-colors ${activeTab === 'ingredients'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
           >
             المكونات
           </button>
@@ -181,11 +250,12 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <input
                     type="text"
-                    defaultValue={product.name}
+                    value={formData.name || ''}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
-                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.name}</p>
+                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.name || '-'}</p>
                 )}
               </div>
 
@@ -194,11 +264,12 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <input
                     type="text"
-                    defaultValue={product.barcode}
+                    value={formData.barcode || ''}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
-                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.barcode}</p>
+                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.barcode || '-'}</p>
                 )}
               </div>
 
@@ -207,11 +278,12 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <input
                     type="text"
-                    defaultValue={product.sku}
+                    value={formData.sku || ''}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
-                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.sku}</p>
+                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.sku || '-'}</p>
                 )}
               </div>
 
@@ -220,11 +292,12 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <input
                     type="text"
-                    defaultValue={product.genericName}
+                    value={formData.scientificName || ''}
+                    onChange={(e) => setFormData({ ...formData, scientificName: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
-                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.genericName}</p>
+                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.scientificName || '-'}</p>
                 )}
               </div>
 
@@ -233,11 +306,12 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <textarea
                     rows={3}
-                    defaultValue={product.description}
+                    value={formData.description || ''}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
-                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.description}</p>
+                  <p className="px-4 py-2.5 bg-gray-50 rounded-lg">{product.description || '-'}</p>
                 )}
               </div>
 
@@ -246,7 +320,8 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <input
                     type="text"
-                    defaultValue={product.strength}
+                    value={formData.strength || ''}
+                    onChange={(e) => setFormData({ ...formData, strength: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
@@ -255,11 +330,12 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 mb-2">الشركة المُصنِّعة</label>
+                <label className="block text-sm text-gray-600 mb-2">الشركة المُصنِِّعة</label>
                 {isEditing ? (
                   <input
                     type="text"
-                    defaultValue={product.manufacturer}
+                    value={formData.manufacturer || ''}
+                    onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
@@ -271,7 +347,8 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 <label className="block text-sm text-gray-600 mb-2">التصنيف الأساسي</label>
                 {isEditing ? (
                   <select
-                    defaultValue={product.primaryCategory}
+                    value={formData.primaryCategory || ''}
+                    onChange={(e) => setFormData({ ...formData, primaryCategory: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option>أدوية القلب</option>
@@ -289,7 +366,8 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 <label className="block text-sm text-gray-600 mb-2">وحدة القياس</label>
                 {isEditing ? (
                   <select
-                    defaultValue={product.measurementUnit}
+                    value={formData.measurementUnit || ''}
+                    onChange={(e) => setFormData({ ...formData, measurementUnit: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option>علبة</option>
@@ -310,7 +388,8 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                   <input
                     type="number"
                     step="0.01"
-                    defaultValue={product.sellingPrice}
+                    value={formData.sellingPrice || 0}
+                    onChange={(e) => setFormData({ ...formData, sellingPrice: Number(e.target.value) })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
@@ -325,7 +404,8 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <input
                     type="number"
-                    defaultValue={product.reorderQty}
+                    value={formData.reorderQty || 0}
+                    onChange={(e) => setFormData({ ...formData, reorderQty: Number(e.target.value) })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
@@ -340,7 +420,8 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <input
                     type="number"
-                    defaultValue={product.minCyclicStock}
+                    value={formData.minCyclicStock || 0}
+                    onChange={(e) => setFormData({ ...formData, minCyclicStock: Number(e.target.value) })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
@@ -357,7 +438,8 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 {isEditing ? (
                   <input
                     type="number"
-                    defaultValue={product.minSafetyStock}
+                    value={formData.minSafetyStock || 0}
+                    onChange={(e) => setFormData({ ...formData, minSafetyStock: Number(e.target.value) })}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (
@@ -375,24 +457,21 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                   </div>
                   {isEditing ? (
                     <button
-                      onClick={() => setIsDrug(!isDrug)}
-                      className={`relative w-14 h-8 rounded-full transition-colors ${
-                        isDrug ? 'bg-green-600' : 'bg-gray-300'
-                      }`}
+                      onClick={() => setFormData({ ...formData, isDrug: !formData.isDrug })}
+                      className={`relative w-14 h-8 rounded-full transition-colors ${formData.isDrug ? 'bg-green-600' : 'bg-gray-300'
+                        }`}
                     >
                       <div
-                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                          isDrug ? 'right-1' : 'left-1'
-                        }`}
+                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${formData.isDrug ? 'right-1' : 'left-1'
+                          }`}
                       />
                     </button>
                   ) : (
                     <span
-                      className={`px-4 py-2 rounded-lg ${
-                        product.isDrug
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-200 text-gray-700'
-                      }`}
+                      className={`px-4 py-2 rounded-lg ${product.isDrug
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-200 text-gray-700'
+                        }`}
                     >
                       {product.isDrug ? 'نعم' : 'لا'}
                     </span>
@@ -410,24 +489,21 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                   </div>
                   {isEditing ? (
                     <button
-                      onClick={() => setIsControlled(!isControlled)}
-                      className={`relative w-14 h-8 rounded-full transition-colors ${
-                        isControlled ? 'bg-red-600' : 'bg-gray-300'
-                      }`}
+                      onClick={() => setFormData({ ...formData, controlledSubstance: !formData.controlledSubstance })}
+                      className={`relative w-14 h-8 rounded-full transition-colors ${formData.controlledSubstance ? 'bg-red-600' : 'bg-gray-300'
+                        }`}
                     >
                       <div
-                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                          isControlled ? 'right-1' : 'left-1'
-                        }`}
+                        className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${formData.controlledSubstance ? 'right-1' : 'left-1'
+                          }`}
                       />
                     </button>
                   ) : (
                     <span
-                      className={`px-4 py-2 rounded-lg ${
-                        product.controlledSubstance
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-200 text-gray-700'
-                      }`}
+                      className={`px-4 py-2 rounded-lg ${product.controlledSubstance
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-200 text-gray-700'
+                        }`}
                     >
                       {product.controlledSubstance ? 'نعم' : 'لا'}
                     </span>
@@ -458,7 +534,11 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                         </div>
                         <span className="font-medium text-gray-900">{category.name}</span>
                       </div>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => removeCategoryMutation.mutate({ productId, categoryId: category.id })}
+                        disabled={removeCategoryMutation.isPending}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                      >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
@@ -482,17 +562,37 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                     </label>
                     <select
                       multiple
+                      value={selectedCategories}
+                      onChange={(e) => {
+                        const selected = Array.from(e.target.selectedOptions, option => option.value);
+                        setSelectedCategories(selected);
+                      }}
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-48"
                     >
-                      {availableCategories.map((cat, idx) => (
-                        <option key={idx} value={cat}>
-                          {cat}
+                      {availableCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
                         </option>
                       ))}
                     </select>
                   </div>
-                  <button className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
-                    <Plus className="w-5 h-5" />
+                  <button
+                    onClick={() => {
+                      if (selectedCategories.length > 0) {
+                        selectedCategories.forEach(categoryId => {
+                          addCategoryMutation.mutate({ productId, categoryId });
+                        });
+                        setSelectedCategories([]);
+                      }
+                    }}
+                    disabled={selectedCategories.length === 0 || addCategoryMutation.isPending}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {addCategoryMutation.isPending ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Plus className="w-5 h-5" />
+                    )}
                     <span>ربط التصنيفات</span>
                   </button>
                 </div>
@@ -505,7 +605,10 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg">مكونات المنتج</h3>
-              <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
+              <button
+                onClick={() => setShowAddIngredientDialog(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+              >
                 <Plus className="w-5 h-5" />
                 <span>إضافة مكوِّن</span>
               </button>
@@ -524,26 +627,42 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {ingredients.map((ingredient) => (
-                    <tr key={ingredient.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={ingredient.ingredientId} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
                             <Pill className="w-5 h-5" />
                           </div>
-                          <span className="font-medium">{ingredient.name}</span>
+                          <span className="font-medium">{ingredient.ingredientName}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="px-3 py-1 bg-gray-100 rounded-lg">
-                          {ingredient.quantity}
+                          {ingredient.amount}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                          <button
+                            onClick={() => {
+                              // Set up for editing - populate form and show dialog
+                              setIngredientFormData({
+                                ingredientId: ingredient.ingredientId,
+                                amount: ingredient.amount
+                              });
+                              setShowAddIngredientDialog(true);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="تعديل"
+                          >
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <button
+                            onClick={() => removeIngredientMutation.mutate({ productId, ingredientId: ingredient.ingredientId })}
+                            disabled={removeIngredientMutation.isPending}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="حذف"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -558,6 +677,108 @@ export function ProductDetail({ productId, onNavigate }: ProductDetailProps) {
               <div className="text-center py-12 text-gray-500">
                 <Pill className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p>لا توجد مكونات مسجلة لهذا المنتج</p>
+              </div>
+            )}
+
+            {/* Add Ingredient Dialog */}
+            {showAddIngredientDialog && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-2xl">
+                  <h3 className="text-xl font-semibold mb-6">إضافة مكوِّن</h3>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        المكوِّن <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={ingredientFormData.ingredientId}
+                        onChange={(e) => setIngredientFormData({ ...ingredientFormData, ingredientId: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">اختر المكوِّن</option>
+                        {availableIngredients.map((ing) => (
+                          <option key={ing.id} value={ing.id}>
+                            {ing.name}
+                          </option>
+                        ))}
+                      </select>
+                      {availableIngredients.length === 0 && (
+                        <p className="text-xs text-yellow-600 mt-1">
+                          لا توجد مكونات متاحة. جميع المكونات مضافة بالفعل أو لا توجد مكونات في النظام.
+                        </p>
+                      )}
+                      {availableIngredients.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {availableIngredients.length} مكون متاح
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">الكمية</label>
+                      <input
+                        type="number"
+                        value={ingredientFormData.amount}
+                        onChange={(e) => setIngredientFormData({ ...ingredientFormData, amount: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        placeholder="أدخل الكمية"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => {
+                        if (!ingredientFormData.ingredientId || ingredientFormData.amount <= 0) {
+                          alert('يرجى اختيار المكوِّن وإدخال كمية صحيحة');
+                          return;
+                        }
+                        addIngredientMutation.mutate(
+                          {
+                            productId,
+                            data: {
+                              ingredientId: ingredientFormData.ingredientId,
+                              amount: ingredientFormData.amount
+                            }
+                          },
+                          {
+                            onSuccess: () => {
+                              setShowAddIngredientDialog(false);
+                              setIngredientFormData({ ingredientId: '', amount: 0 });
+                            },
+                            onError: (error: any) => {
+                              alert('فشل إضافة المكوِّن: ' + (error?.message || 'خطأ غير معروف'));
+                            }
+                          }
+                        );
+                      }}
+                      disabled={addIngredientMutation.isPending}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {addIngredientMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          جاري الإضافة...
+                        </>
+                      ) : (
+                        'إضافة'
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddIngredientDialog(false);
+                        setIngredientFormData({ ingredientId: '', amount: 0 });
+                      }}
+                      className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

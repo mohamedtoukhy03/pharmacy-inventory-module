@@ -11,7 +11,8 @@ import {
   Search,
   Eye,
   CheckCircle,
-  XCircle
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import {
   useLocations,
@@ -50,14 +51,14 @@ export function LocationsListDynamic({ onNavigate }: LocationsListProps) {
     },
     {
       label: 'الفروع',
-      value: locations.filter(l => l.type === 'branch').length.toString(),
+      value: locations.filter(l => l.locationType === 'branch').length.toString(),
       icon: Building2,
       color: 'green',
       subtext: 'فرع نشط'
     },
     {
       label: 'المستودعات',
-      value: locations.filter(l => l.type === 'warehouse').length.toString(),
+      value: locations.filter(l => l.locationType === 'warehouse').length.toString(),
       icon: Warehouse,
       color: 'purple',
       subtext: 'مستودع نشط'
@@ -75,6 +76,8 @@ export function LocationsListDynamic({ onNavigate }: LocationsListProps) {
     'branch': Building2,
     'warehouse': Warehouse,
     'external': MapPin,
+    'supplier': Building2,
+    'quarantine': AlertTriangle,
     'clinic': Building2
   };
 
@@ -82,13 +85,14 @@ export function LocationsListDynamic({ onNavigate }: LocationsListProps) {
     'branch': 'فرع',
     'warehouse': 'مستودع',
     'external': 'خارجي',
+    'supplier': 'مورد',
+    'quarantine': 'حجر صحي',
     'clinic': 'عيادة'
   };
 
   const statusLabels: Record<LocationStatus, string> = {
     'active': 'نشط',
-    'inactive': 'غير نشط',
-    'suspended': 'معلق'
+    'inactive': 'غير نشط'
   };
 
   return (
@@ -222,14 +226,14 @@ export function LocationsListDynamic({ onNavigate }: LocationsListProps) {
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {locations.map((location) => {
-                const IconComponent = typeIcons[location.type] || MapPin;
+                const IconComponent = typeIcons[location.locationType] || MapPin;
                 
                 return (
                   <LocationCard
                     key={location.id}
                     location={location}
                     IconComponent={IconComponent}
-                    typeLabel={typeLabels[location.type]}
+                    typeLabel={typeLabels[location.locationType]}
                     statusLabel={statusLabels[location.status]}
                     onEdit={() => setEditingLocation(location)}
                     onNavigate={onNavigate}
@@ -268,7 +272,7 @@ function LocationCard({ location, IconComponent, typeLabel, statusLabel, onEdit,
   const deleteMutation = useDeleteLocation();
 
   const handleDelete = () => {
-    if (window.confirm(`هل أنت متأكد من حذف الموقع "${location.name}"?`)) {
+    if (window.confirm(`هل أنت متأكد من حذف الموقع "${location.locationName}"?`)) {
       deleteMutation.mutate(location.id);
     }
   };
@@ -282,7 +286,7 @@ function LocationCard({ location, IconComponent, typeLabel, statusLabel, onEdit,
             <IconComponent className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-medium text-gray-900">{location.name}</h3>
+            <h3 className="font-medium text-gray-900">{location.locationName}</h3>
             <p className="text-sm text-gray-500 flex items-center gap-2 mt-1">
               <MapPin className="w-3 h-3" />
               {location.address || 'لا يوجد عنوان'}
@@ -293,8 +297,6 @@ function LocationCard({ location, IconComponent, typeLabel, statusLabel, onEdit,
           className={`px-3 py-1 rounded-lg text-sm ${
             location.status === 'active'
               ? 'bg-green-100 text-green-700'
-              : location.status === 'suspended'
-              ? 'bg-yellow-100 text-yellow-700'
               : 'bg-gray-100 text-gray-700'
           }`}
         >
@@ -319,7 +321,7 @@ function LocationCard({ location, IconComponent, typeLabel, statusLabel, onEdit,
         <div className="p-3 bg-orange-50 rounded-xl">
           <div className="text-sm text-gray-600 mb-1">موقع رئيسي</div>
           <div className="flex items-center gap-1">
-            {location.parentId ? (
+            {location.parentLocationId ? (
               <>
                 <XCircle className="w-4 h-4 text-gray-400" />
                 <span className="text-sm text-gray-600">لا</span>
@@ -368,12 +370,12 @@ interface LocationDialogProps {
 
 function LocationDialog({ location, onClose }: LocationDialogProps) {
   const [formData, setFormData] = useState({
-    name: location?.name || '',
-    type: location?.type || ('branch' as LocationType),
+    locationName: location?.locationName || '',
+    locationType: location?.locationType || ('branch' as LocationType),
     status: location?.status || ('active' as LocationStatus),
     address: location?.address || '',
-    parentId: location?.parentId || '',
-    isPrimary: location?.isPrimary || false,
+    parentLocationId: location?.parentLocationId || null,
+    isDirectToMain: location?.isDirectToMain || false,
   });
 
   const createMutation = useCreateLocation();
@@ -383,12 +385,12 @@ function LocationDialog({ location, onClose }: LocationDialogProps) {
     e.preventDefault();
     
     const data = {
-      name: formData.name,
-      type: formData.type,
+      locationName: formData.locationName,
+      locationType: formData.locationType,
       status: formData.status,
       address: formData.address || undefined,
-      parentId: formData.parentId || undefined,
-      isPrimary: formData.isPrimary,
+      parentLocationId: formData.parentLocationId ? Number(formData.parentLocationId) : null,
+      isDirectToMain: formData.isDirectToMain,
     };
 
     try {
@@ -425,8 +427,8 @@ function LocationDialog({ location, onClose }: LocationDialogProps) {
             </label>
             <input
               type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              value={formData.locationName}
+              onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
               placeholder="أدخل اسم الموقع"
               required
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -439,14 +441,15 @@ function LocationDialog({ location, onClose }: LocationDialogProps) {
                 النوع <span className="text-red-500">*</span>
               </label>
               <select 
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as LocationType })}
+                value={formData.locationType}
+                onChange={(e) => setFormData({ ...formData, locationType: e.target.value as LocationType })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="branch">فرع</option>
                 <option value="warehouse">مستودع</option>
                 <option value="external">خارجي</option>
-                <option value="clinic">عيادة</option>
+                <option value="supplier">مورد</option>
+                <option value="quarantine">حجر صحي</option>
               </select>
             </div>
 
@@ -484,14 +487,14 @@ function LocationDialog({ location, onClose }: LocationDialogProps) {
             </div>
             <button
               type="button"
-              onClick={() => setFormData({ ...formData, isPrimary: !formData.isPrimary })}
+              onClick={() => setFormData({ ...formData, isDirectToMain: !formData.isDirectToMain })}
               className={`relative w-14 h-8 rounded-full transition-colors ${
-                formData.isPrimary ? 'bg-blue-600' : 'bg-gray-300'
+                formData.isDirectToMain ? 'bg-blue-600' : 'bg-gray-300'
               }`}
             >
               <div
                 className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-transform ${
-                  formData.isPrimary ? 'right-1' : 'left-1'
+                  formData.isDirectToMain ? 'right-1' : 'left-1'
                 }`}
               />
             </button>

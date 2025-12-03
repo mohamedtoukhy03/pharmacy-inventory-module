@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Plus,
   Edit,
@@ -16,6 +16,8 @@ import {
   TrendingUp,
   Archive
 } from 'lucide-react';
+import { useBatches, useDeleteBatch } from '@/lib/query';
+import type { Batch } from '@/lib/api/types';
 
 type Tab = 'batches' | 'stock-levels';
 
@@ -58,22 +60,20 @@ export function StockManagement({ onNavigate }: StockManagementProps) {
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab('batches')}
-            className={`pb-4 px-2 border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'batches'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            className={`pb-4 px-2 border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'batches'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
           >
             <Package className="w-5 h-5" />
             <span>الدفعات</span>
           </button>
           <button
             onClick={() => setActiveTab('stock-levels')}
-            className={`pb-4 px-2 border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'stock-levels'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            className={`pb-4 px-2 border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'stock-levels'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
           >
             <Archive className="w-5 h-5" />
             <span>مستويات المخزون</span>
@@ -126,75 +126,55 @@ function BatchesTab({
   const [selectedStockType, setSelectedStockType] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
 
-  const batches = [
-    {
-      id: '1',
-      product: 'أسبرين 100 مجم',
-      location: 'الفرع الرئيسي - الرياض',
-      batchNumber: 'BTH-2024-001',
-      quantity: 500,
-      cost: 12.50,
-      manufacturingDate: '2024-01-15',
-      expiryDate: '2026-01-15',
-      stockType: 'متاح',
-      daysToExpiry: 395
-    },
-    {
-      id: '2',
-      product: 'باراسيتامول 500 مجم',
-      location: 'فرع جدة',
-      batchNumber: 'BTH-2024-002',
-      quantity: 1000,
-      cost: 6.75,
-      manufacturingDate: '2024-02-20',
-      expiryDate: '2025-08-20',
-      stockType: 'متاح',
-      daysToExpiry: 262
-    },
-    {
-      id: '3',
-      product: 'أموكسيسيلين 500 مجم',
-      location: 'مستودع الدمام',
-      batchNumber: 'BTH-2024-003',
-      quantity: 750,
-      cost: 35.00,
-      manufacturingDate: '2024-03-10',
-      expiryDate: '2025-03-10',
-      stockType: 'متاح',
-      daysToExpiry: 99
-    },
-    {
-      id: '4',
-      product: 'فيتامين د 5000 وحدة',
-      location: 'الفرع الرئيسي - الرياض',
-      batchNumber: 'BTH-2024-004',
-      quantity: 300,
-      cost: 25.00,
-      manufacturingDate: '2024-04-05',
-      expiryDate: '2025-04-05',
-      stockType: 'متاح',
-      daysToExpiry: 125
-    },
-    {
-      id: '5',
-      product: 'ترامادول 50 مجم',
-      location: 'مستودع الحجر الصحي',
-      batchNumber: 'BTH-2024-005',
-      quantity: 100,
-      cost: 95.00,
-      manufacturingDate: '2024-05-01',
-      expiryDate: '2025-02-01',
-      stockType: 'حجر صحي',
-      daysToExpiry: 62
-    }
-  ];
+  // Fetch batches from API
+  const { data: batchesResponse, isLoading } = useBatches();
+  const deleteBatchMutation = useDeleteBatch();
 
-  const stats = [
-    { label: 'إجمالي الدفعات', value: '342', icon: Package, color: 'blue' },
-    { label: 'دفعات نشطة', value: '298', icon: TrendingUp, color: 'green' },
-    { label: 'قريبة الانتهاء', value: '23', icon: AlertTriangle, color: 'yellow' },
-    { label: 'منتهية', value: '21', icon: X, color: 'red' }
-  ];
+  // Extract batches from paginated response
+  const batchesData = Array.isArray(batchesResponse) ? batchesResponse : (batchesResponse?.content || []);
+
+  // Calculate days until expiry for each batch
+  const batchesWithExpiry = useMemo(() => {
+    return batchesData.map((batch: Batch) => {
+      const today = new Date();
+      const expiry = new Date(batch.expiryDate);
+      const diffTime = expiry.getTime() - today.getTime();
+      const daysToExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      return {
+        ...batch,
+        daysToExpiry,
+        isExpired: daysToExpiry < 0,
+        isNearExpiry: daysToExpiry >= 0 && daysToExpiry <= 90
+      };
+    });
+  }, [batchesData]);
+
+  // Filter batches based on search and filters
+  const filteredBatches = useMemo(() => {
+    return batchesWithExpiry.filter(batch => {
+      if (searchText && !batch.productName?.toLowerCase().includes(searchText.toLowerCase()) &&
+        !batch.batchNumber.toLowerCase().includes(searchText.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+  }, [batchesWithExpiry, searchText]);
+
+  // Calculate stats dynamically
+  const stats = useMemo(() => {
+    const total = batchesWithExpiry.length;
+    const expired = batchesWithExpiry.filter(b => b.isExpired).length;
+    const nearExpiry = batchesWithExpiry.filter(b => b.isNearExpiry).length;
+    const active = total - expired;
+
+    return [
+      { label: 'إجمالي الدفعات', value: total.toString(), icon: Package, color: 'blue' },
+      { label: 'دفعات نشطة', value: active.toString(), icon: TrendingUp, color: 'green' },
+      { label: 'قريبة الانتهاء', value: nearExpiry.toString(), icon: AlertTriangle, color: 'yellow' },
+      { label: 'منتهية', value: expired.toString(), icon: X, color: 'red' }
+    ];
+  }, [batchesWithExpiry]);
 
   return (
     <>
@@ -207,15 +187,14 @@ function BatchesTab({
           >
             <div className="flex items-center justify-between mb-4">
               <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  stat.color === 'blue'
-                    ? 'bg-blue-100 text-blue-600'
-                    : stat.color === 'green'
+                className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color === 'blue'
+                  ? 'bg-blue-100 text-blue-600'
+                  : stat.color === 'green'
                     ? 'bg-green-100 text-green-600'
                     : stat.color === 'yellow'
-                    ? 'bg-yellow-100 text-yellow-600'
-                    : 'bg-red-100 text-red-600'
-                }`}
+                      ? 'bg-yellow-100 text-yellow-600'
+                      : 'bg-red-100 text-red-600'
+                  }`}
               >
                 <stat.icon className="w-6 h-6" />
               </div>
@@ -251,11 +230,10 @@ function BatchesTab({
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-colors ${
-                showFilters
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-colors ${showFilters
+                ? 'bg-blue-50 border-blue-200 text-blue-700'
+                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Filter className="w-5 h-5" />
               <span>فلاتر</span>
@@ -360,92 +338,114 @@ function BatchesTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {batches.map((batch) => (
-                <tr
-                  key={batch.id}
-                  className="hover:bg-gray-50 transition-colors group"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
-                        <Package className="w-5 h-5" />
-                      </div>
-                      <span className="font-medium text-gray-900">{batch.product}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <MapPin className="w-4 h-4" />
-                      <span className="text-sm">{batch.location}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-mono">
-                      {batch.batchNumber}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-medium text-gray-900">
-                      {batch.quantity.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-gray-600">
-                      <DollarSign className="w-4 h-4" />
-                      <span>{batch.cost.toFixed(2)}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="flex items-center gap-2 text-gray-900">
-                        <Calendar className="w-4 h-4" />
-                        <span className="text-sm">{batch.expiryDate}</span>
-                      </div>
-                      <div
-                        className={`text-xs mt-1 ${
-                          batch.daysToExpiry <= 90
-                            ? 'text-red-600'
-                            : batch.daysToExpiry <= 180
-                            ? 'text-yellow-600'
-                            : 'text-green-600'
-                        }`}
-                      >
-                        {batch.daysToExpiry} يوم متبقي
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`px-3 py-1 rounded-lg text-sm ${
-                        batch.stockType === 'متاح'
-                          ? 'bg-green-100 text-green-700'
-                          : batch.stockType === 'حجر صحي'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {batch.stockType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => onNavigate('batch-detail', batch.id)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="تفاصيل"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                    جاري تحميل الدفعات...
                   </td>
                 </tr>
-              ))}
+              ) : filteredBatches.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                    لا توجد دفعات
+                  </td>
+                </tr>
+              ) : (
+                filteredBatches.map((batch) => (
+                  <tr
+                    key={batch.id}
+                    className="hover:bg-gray-50 transition-colors group"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
+                          <Package className="w-5 h-5" />
+                        </div>
+                        <span className="font-medium text-gray-900">{batch.productName || 'غير معروف'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-sm">{batch.locationName || 'غير معروف'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-mono">
+                        {batch.batchNumber}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-medium text-gray-900">
+                        {batch.quantity.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <span>{batch.cost ? `${batch.cost.toFixed(2)} ر.س` : 'غير محدد'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-gray-900">
+                          <Calendar className="w-4 h-4" />
+                          <span className="text-sm">{new Date(batch.expiryDate).toLocaleDateString('ar-SA')}</span>
+                        </div>
+                        <div
+                          className={`text-xs mt-1 ${batch.isExpired
+                            ? 'text-red-600 font-semibold'
+                            : batch.daysToExpiry <= 90
+                              ? 'text-red-600'
+                              : batch.daysToExpiry <= 180
+                                ? 'text-yellow-600'
+                                : 'text-green-600'
+                            }`}
+                        >
+                          {batch.isExpired ? 'منتهية الصلاحية' : `${batch.daysToExpiry} يوم متبقي`}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-3 py-1 rounded-lg text-sm ${batch.stockType === 'available'
+                            ? 'bg-green-100 text-green-700'
+                            : batch.stockType === 'quarantined'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : batch.stockType === 'near_expiry'
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-gray-100 text-gray-700'
+                          }`}
+                      >
+                        {batch.stockType === 'available' ? 'متاح' :
+                          batch.stockType === 'quarantined' ? 'حجر صحي' :
+                            batch.stockType === 'near_expiry' ? 'قريب الانتهاء' :
+                              batch.stockType === 'expired' ? 'منتهي' : 'آخر'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => onNavigate('batch-detail', batch.id)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="تفاصيل"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          onClick={() => {
+                            if (confirm('هل تريد حذف هذه الدفعة؟')) {
+                              deleteBatchMutation.mutate(batch.id);
+                            }
+                          }}
+                          disabled={deleteBatchMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -590,13 +590,12 @@ function StockLevelsTab({
                 </td>
                 <td className="px-6 py-4">
                   <span
-                    className={`px-3 py-1 rounded-lg text-sm ${
-                      level.stockType === 'متاح'
-                        ? 'bg-green-100 text-green-700'
-                        : level.stockType === 'محجوز'
+                    className={`px-3 py-1 rounded-lg text-sm ${level.stockType === 'متاح'
+                      ? 'bg-green-100 text-green-700'
+                      : level.stockType === 'محجوز'
                         ? 'bg-yellow-100 text-yellow-700'
                         : 'bg-gray-100 text-gray-700'
-                    }`}
+                      }`}
                   >
                     {level.stockType}
                   </span>
@@ -616,13 +615,12 @@ function StockLevelsTab({
                 </td>
                 <td className="px-6 py-4">
                   <span
-                    className={`px-3 py-1 rounded-lg text-sm flex items-center gap-2 w-fit ${
-                      level.status === 'طبيعي'
-                        ? 'bg-green-100 text-green-700'
-                        : level.status === 'منخفض'
+                    className={`px-3 py-1 rounded-lg text-sm flex items-center gap-2 w-fit ${level.status === 'طبيعي'
+                      ? 'bg-green-100 text-green-700'
+                      : level.status === 'منخفض'
                         ? 'bg-yellow-100 text-yellow-700'
                         : 'bg-red-100 text-red-700'
-                    }`}
+                      }`}
                   >
                     {level.status === 'حرج' && (
                       <AlertTriangle className="w-4 h-4" />
