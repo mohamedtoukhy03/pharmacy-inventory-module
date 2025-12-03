@@ -13,9 +13,11 @@ import {
 import {
   useCategories,
   useCreateCategory,
+  useUpdateCategory,
   useDeleteCategory,
   useIngredients,
   useCreateIngredient,
+  useUpdateIngredient,
   useDeleteIngredient
 } from '@/lib/query';
 
@@ -24,6 +26,7 @@ type Tab = 'categories' | 'ingredients';
 export function CategoriesIngredients() {
   const [activeTab, setActiveTab] = useState<Tab>('categories');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
   const [searchText, setSearchText] = useState('');
 
   return (
@@ -82,16 +85,34 @@ export function CategoriesIngredients() {
 
       {/* Tab Content */}
       {activeTab === 'categories' ? (
-        <CategoriesTab searchText={searchText} setSearchText={setSearchText} />
+        <CategoriesTab 
+          searchText={searchText} 
+          setSearchText={setSearchText}
+          onEdit={(item) => {
+            setEditItem(item);
+            setShowCreateDialog(true);
+          }}
+        />
       ) : (
-        <IngredientsTab searchText={searchText} setSearchText={setSearchText} />
+        <IngredientsTab 
+          searchText={searchText} 
+          setSearchText={setSearchText}
+          onEdit={(item) => {
+            setEditItem(item);
+            setShowCreateDialog(true);
+          }}
+        />
       )}
 
-      {/* Create Dialog */}
+      {/* Create/Edit Dialog */}
       {showCreateDialog && (
         <CreateDialog
           type={activeTab}
-          onClose={() => setShowCreateDialog(false)}
+          editItem={editItem}
+          onClose={() => {
+            setShowCreateDialog(false);
+            setEditItem(null);
+          }}
         />
       )}
     </div>
@@ -100,10 +121,12 @@ export function CategoriesIngredients() {
 
 function CategoriesTab({
   searchText,
-  setSearchText
+  setSearchText,
+  onEdit,
 }: {
   searchText: string;
-  setSearchText: (value: string) => void;
+  setSearchText: (text: string) => void;
+  onEdit: (item: any) => void;
 }) {
   const { data: categoriesData, isLoading, isError } = useCategories();
   const deleteMutation = useDeleteCategory();
@@ -167,7 +190,9 @@ function CategoriesTab({
                     <Tag className="w-6 h-6" />
                   </div>
                   <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                    <button 
+                      onClick={() => onEdit(category)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                       <Edit className="w-4 h-4" />
                     </button>
                     <button 
@@ -199,10 +224,12 @@ function CategoriesTab({
 
 function IngredientsTab({
   searchText,
-  setSearchText
+  setSearchText,
+  onEdit,
 }: {
   searchText: string;
-  setSearchText: (value: string) => void;
+  setSearchText: (text: string) => void;
+  onEdit: (item: any) => void;
 }) {
   const { data: ingredientsData, isLoading, isError } = useIngredients();
   const deleteMutation = useDeleteIngredient();
@@ -277,7 +304,9 @@ function IngredientsTab({
                   <td className="px-6 py-4 text-gray-600">{ingredient.description || '-'}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => onEdit(ingredient)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
@@ -299,22 +328,38 @@ function IngredientsTab({
   );
 }
 
-function CreateDialog({ type, onClose }: { type: Tab; onClose: () => void }) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+function CreateDialog({ type, editItem, onClose }: { type: Tab; editItem?: any; onClose: () => void }) {
+  const [name, setName] = useState(editItem?.name || '');
+  const [description, setDescription] = useState(editItem?.description || '');
 
   const createCategoryMutation = useCreateCategory();
+  const updateCategoryMutation = useUpdateCategory();
   const createIngredientMutation = useCreateIngredient();
+  const updateIngredientMutation = useUpdateIngredient();
 
   const handleSubmit = () => {
     if (type === 'categories') {
-      createCategoryMutation.mutate({ name, description }, {
-        onSuccess: () => onClose()
-      });
+      if (editItem) {
+        updateCategoryMutation.mutate(
+          { categoryId: editItem.id.toString(), data: { name, description } },
+          { onSuccess: () => onClose() }
+        );
+      } else {
+        createCategoryMutation.mutate({ name, description }, {
+          onSuccess: () => onClose()
+        });
+      }
     } else {
-      createIngredientMutation.mutate({ name, description }, {
-        onSuccess: () => onClose()
-      });
+      if (editItem) {
+        updateIngredientMutation.mutate(
+          { ingredientId: editItem.id.toString(), data: { name, description } },
+          { onSuccess: () => onClose() }
+        );
+      } else {
+        createIngredientMutation.mutate({ name, description }, {
+          onSuccess: () => onClose()
+        });
+      }
     }
   };
 
@@ -323,7 +368,10 @@ function CreateDialog({ type, onClose }: { type: Tab; onClose: () => void }) {
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-xl">
-            {type === 'categories' ? 'إضافة تصنيف جديد' : 'إضافة مكوِّن جديد'}
+            {editItem 
+              ? (type === 'categories' ? 'تعديل التصنيف' : 'تعديل المكوِّن')
+              : (type === 'categories' ? 'إنشاء تصنيف جديد' : 'إنشاء مكوِّن جديد')
+            }
           </h2>
           <button
             onClick={onClose}
@@ -368,13 +416,13 @@ function CreateDialog({ type, onClose }: { type: Tab; onClose: () => void }) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!name || createCategoryMutation.isPending || createIngredientMutation.isPending}
+            disabled={!name || createCategoryMutation.isPending || createIngredientMutation.isPending || updateCategoryMutation.isPending || updateIngredientMutation.isPending}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            {createCategoryMutation.isPending || createIngredientMutation.isPending ? (
+            {createCategoryMutation.isPending || createIngredientMutation.isPending || updateCategoryMutation.isPending || updateIngredientMutation.isPending ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              'حفظ'
+              editItem ? 'تحديث' : 'حفظ'
             )}
           </button>
         </div>

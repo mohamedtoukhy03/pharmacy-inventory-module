@@ -166,6 +166,14 @@ export const useLocations = (filters?: LocationFilters) => {
   });
 };
 
+export const useLocation = (locationId: string, enabled = true) => {
+  return useQuery({
+    queryKey: queryKeys.locations.detail(locationId),
+    queryFn: () => locationsApi.getById(locationId),
+    enabled: enabled && !!locationId,
+  });
+};
+
 export const useLocationShelves = (locationId: string) => {
   return useQuery({
     queryKey: queryKeys.locations.shelves(locationId),

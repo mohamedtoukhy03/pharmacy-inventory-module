@@ -56,10 +56,11 @@ export const safeBatchesApi = {
   },
 
   getById: async (batchId: string) => {
-    if (!batchId || batchId.trim() === '') {
+    const id = String(batchId);
+    if (!id || id.trim() === '') {
       throw new ValidationError('Batch ID is required');
     }
-    return batchesApi.getById(batchId);
+    return batchesApi.getById(id);
   },
 
   create: async (data: Partial<UpsertBatchRequest>) => {
@@ -68,43 +69,49 @@ export const safeBatchesApi = {
   },
 
   update: async (batchId: string, data: Partial<UpsertBatchRequest>) => {
-    if (!batchId || batchId.trim() === '') {
+    const id = String(batchId);
+    if (!id || id.trim() === '') {
       throw new ValidationError('Batch ID is required');
     }
     const validated = validateBatchRequest(data);
-    return batchesApi.update(batchId, validated);
+    return batchesApi.update(id, validated);
   },
 
   delete: async (batchId: string) => {
-    if (!batchId || batchId.trim() === '') {
+    const id = String(batchId);
+    if (!id || id.trim() === '') {
       throw new ValidationError('Batch ID is required');
     }
-    return batchesApi.delete(batchId);
+    return batchesApi.delete(id);
   },
 
   getAllocations: async (batchId: string) => {
-    if (!batchId || batchId.trim() === '') {
+    const id = String(batchId);
+    if (!id || id.trim() === '') {
       throw new ValidationError('Batch ID is required');
     }
-    return batchesApi.getAllocations(batchId);
+    return batchesApi.getAllocations(id);
   },
 
   createAllocation: async (batchId: string, data: Partial<UpsertBatchShelfAllocationRequest>) => {
-    if (!batchId || batchId.trim() === '') {
+    const id = String(batchId);
+    if (!id || id.trim() === '') {
       throw new ValidationError('Batch ID is required');
     }
     const validated = validateShelfAllocationRequest(data);
-    return batchesApi.createAllocation(batchId, validated);
+    return batchesApi.createAllocation(id, validated);
   },
 
   deleteAllocation: async (batchId: string, allocationId: string) => {
-    if (!batchId || batchId.trim() === '') {
+    const id = String(batchId);
+    const allocId = String(allocationId);
+    if (!id || id.trim() === '') {
       throw new ValidationError('Batch ID is required');
     }
-    if (!allocationId || allocationId.trim() === '') {
+    if (!allocId || allocId.trim() === '') {
       throw new ValidationError('Allocation ID is required');
     }
-    return batchesApi.deleteAllocation(batchId, allocationId);
+    return batchesApi.deleteAllocation(id, allocId);
   },
 };
 

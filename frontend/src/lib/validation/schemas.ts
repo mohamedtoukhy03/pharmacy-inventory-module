@@ -71,12 +71,12 @@ const validateISODate = (value: string | undefined, fieldName: string, required 
     }
     return undefined;
   }
-  
+
   const date = new Date(value);
   if (isNaN(date.getTime())) {
     throw new ValidationError(`${fieldName} must be a valid date`, fieldName);
   }
-  
+
   // Return ISO format YYYY-MM-DD
   return value.split('T')[0];
 };
@@ -103,15 +103,15 @@ const validateId = (value: any, fieldName: string): string => {
   if (!sanitized) {
     throw new ValidationError(`${fieldName} is required`, fieldName);
   }
-  
+
   // Accept numeric IDs or UUIDs
   const isNumeric = /^\d+$/.test(sanitized);
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sanitized);
-  
+
   if (!isNumeric && !isUUID) {
     throw new ValidationError(`${fieldName} must be a valid ID`, fieldName);
   }
-  
+
   return sanitized;
 };
 
@@ -130,14 +130,14 @@ const validateEnum = <T extends string>(
     }
     return undefined;
   }
-  
+
   if (!validValues.includes(value as T)) {
     throw new ValidationError(
       `${fieldName} must be one of: ${validValues.join(', ')}`,
       fieldName
     );
   }
-  
+
   return value as T;
 };
 
@@ -163,23 +163,23 @@ export const validateBatchRequest = (data: Partial<UpsertBatchRequest>): UpsertB
   try {
     const productId = validateId(data.productId, 'Product');
     const locationId = validateId(data.locationId, 'Location');
-    const batchCode = validateRequiredString(data.batchCode, 'Batch Code', 1);
-    const receivedQty = validatePositiveInt(data.receivedQty, 'Received Quantity');
-    const unitPrice = validateNonNegativeNumber(data.unitPrice, 'Unit Price');
+    const quantity = validatePositiveInt(data.quantity, 'Quantity');
     const expiryDate = validateISODate(data.expiryDate, 'Expiry Date', true)!;
-    
-    // Optional fields
-    const supplierId = data.supplierId ? validateId(data.supplierId, 'Supplier') : undefined;
-    const manufactureDate = validateISODate(data.manufactureDate, 'Manufacture Date', false);
-    const receiptDate = validateISODate(data.receiptDate, 'Receipt Date', false);
-    
-    // Validate stockType enum
-    const validStockTypes = ['store', 'warehouse', 'pharmacy'] as const;
-    const stockType = validateEnum(data.stockType, 'Stock Type', validStockTypes, false) || 'store';
 
-    // Date validation: manufacture < expiry
-    if (manufactureDate && expiryDate && new Date(manufactureDate) >= new Date(expiryDate)) {
-      errors.manufactureDate = 'Manufacture date must be before expiry date';
+    // Optional fields
+    const batchNumber = sanitizeString(data.batchNumber);
+    const cost = data.cost ? validateNonNegativeNumber(data.cost, 'Cost') : undefined;
+    const supplierId = data.supplierId ? validateId(data.supplierId, 'Supplier') : undefined;
+    const manufacturingDate = validateISODate(data.manufacturingDate, 'Manufacturing Date', false);
+    const receivingDate = validateISODate(data.receivingDate, 'Receiving Date', false);
+
+    // Validate stockType enum
+    const validStockTypes = ['available', 'reserved', 'damaged', 'expired', 'returned'] as const;
+    const stockType = validateEnum(data.stockType, 'Stock Type', validStockTypes, false) || 'available';
+
+    // Date validation: manufacturing < expiry
+    if (manufacturingDate && expiryDate && new Date(manufacturingDate) >= new Date(expiryDate)) {
+      errors.manufacturingDate = 'Manufacturing date must be before expiry date';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -189,13 +189,13 @@ export const validateBatchRequest = (data: Partial<UpsertBatchRequest>): UpsertB
     return cleanObject({
       productId,
       locationId,
+      quantity,
+      batchNumber,
+      cost,
       supplierId,
-      batchCode,
-      receivedQty,
-      unitPrice,
-      manufactureDate,
+      manufacturingDate,
       expiryDate,
-      receiptDate,
+      receivingDate,
       stockType,
     }) as UpsertBatchRequest;
   } catch (error) {
@@ -213,7 +213,7 @@ export const validateBatchRequest = (data: Partial<UpsertBatchRequest>): UpsertB
 export const validateCreateProductRequest = (data: Partial<CreateProductRequest>): CreateProductRequest => {
   const name = validateRequiredString(data.name, 'Product Name', 2);
   const price = validateNonNegativeNumber(data.price, 'Price');
-  
+
   // Optional fields
   const barcode = sanitizeString(data.barcode);
   const sku = sanitizeString(data.sku);
@@ -223,10 +223,10 @@ export const validateCreateProductRequest = (data: Partial<CreateProductRequest>
   const measurementUnitId = data.measurementUnitId ? validateId(data.measurementUnitId, 'Measurement Unit') : undefined;
   const categoryId = data.categoryId ? validateId(data.categoryId, 'Category') : undefined;
   const supplierId = data.supplierId ? validateId(data.supplierId, 'Supplier') : undefined;
-  
+
   const isDrug = Boolean(data.isDrug);
   const isControlled = Boolean(data.isControlled);
-  
+
   const reorderQty = data.reorderQty ? validatePositiveInt(data.reorderQty, 'Reorder Quantity') : undefined;
   const minStock = data.minStock ? validateNonNegativeNumber(data.minStock, 'Minimum Stock') : undefined;
   const minCycleStock = data.minCycleStock ? validateNonNegativeNumber(data.minCycleStock, 'Min Cycle Stock') : undefined;
@@ -255,9 +255,9 @@ export const validateUpdateProductRequest = (data: Partial<UpdateProductRequest>
   if (Object.keys(data).length === 0) {
     throw new ValidationError('At least one field must be updated');
   }
-  
+
   const updates: Partial<UpdateProductRequest> = {};
-  
+
   if (data.name !== undefined) updates.name = validateRequiredString(data.name, 'Product Name', 2);
   if (data.price !== undefined) updates.price = validateNonNegativeNumber(data.price, 'Price');
   if (data.barcode !== undefined) updates.barcode = sanitizeString(data.barcode);
@@ -283,13 +283,13 @@ export const validateUpdateProductRequest = (data: Partial<UpdateProductRequest>
 
 export const validateLocationRequest = (data: Partial<UpsertLocationRequest>): UpsertLocationRequest => {
   const name = validateRequiredString(data.name, 'Location Name', 2);
-  
+
   const validTypes = ['warehouse', 'branch', 'external', 'clinic'] as const;
   const type = validateEnum(data.type, 'Location Type', validTypes, true)!;
-  
+
   const validStatuses = ['active', 'inactive', 'suspended'] as const;
   const status = validateEnum(data.status, 'Location Status', validStatuses, false) || 'active';
-  
+
   const address = sanitizeString(data.address);
   const parentId = data.parentId ? validateId(data.parentId, 'Parent Location') : undefined;
   const isPrimary = data.isPrimary !== undefined ? Boolean(data.isPrimary) : undefined;
@@ -311,10 +311,11 @@ export const validateLocationRequest = (data: Partial<UpsertLocationRequest>): U
 export const validateShelfAllocationRequest = (
   data: Partial<UpsertBatchShelfAllocationRequest>
 ): UpsertBatchShelfAllocationRequest => {
-  const shelfId = validateId(data.shelfId, 'Shelf');
-  const allocatedQty = validatePositiveInt(data.allocatedQty, 'Allocated Quantity');
+  const shelfId = validatePositiveInt(data.shelfId, 'Shelf ID');
+  const quantity = validatePositiveInt(data.quantity, 'Quantity');
+  const threshold = data.threshold ? validatePositiveInt(data.threshold, 'Threshold') : undefined;
 
-  return { shelfId, allocatedQty };
+  return cleanObject({ shelfId, quantity, threshold }) as UpsertBatchShelfAllocationRequest;
 };
 
 // ============================================
@@ -324,7 +325,7 @@ export const validateShelfAllocationRequest = (
 export const validateCategoryRequest = (data: Partial<UpsertCategoryRequest>): UpsertCategoryRequest => {
   const name = validateRequiredString(data.name, 'Category Name', 2);
   const description = sanitizeString(data.description);
-  
+
   return cleanObject({ name, description }) as UpsertCategoryRequest;
 };
 
@@ -332,8 +333,8 @@ export const validateIngredientRequest = (data: Partial<UpsertIngredientRequest>
   const name = validateRequiredString(data.name, 'Ingredient Name', 2);
   const description = sanitizeString(data.description);
   const active = data.active !== undefined ? Boolean(data.active) : true;
-  const defaultMeasurementUnitId = data.defaultMeasurementUnitId 
-    ? validateId(data.defaultMeasurementUnitId, 'Measurement Unit') 
+  const defaultMeasurementUnitId = data.defaultMeasurementUnitId
+    ? validateId(data.defaultMeasurementUnitId, 'Measurement Unit')
     : undefined;
 
   return cleanObject({ name, description, active, defaultMeasurementUnitId }) as UpsertIngredientRequest;
@@ -344,8 +345,8 @@ export const validateProductIngredientRequest = (
 ): any => {
   const ingredientId = validateId(data.ingredientId, 'Ingredient');
   const qty = validateNonNegativeNumber(data.quantity || data.qty, 'Quantity');
-  const measurementUnitId = data.measurementUnitId 
-    ? validateId(data.measurementUnitId, 'Measurement Unit') 
+  const measurementUnitId = data.measurementUnitId
+    ? validateId(data.measurementUnitId, 'Measurement Unit')
     : undefined;
   const active = data.active !== undefined ? Boolean(data.active) : true;
 
@@ -357,7 +358,7 @@ export const validateStockLevelRequest = (data: Partial<UpsertStockLevelRequest>
   const locationId = validateId(data.locationId, 'Location');
   const stockType = validateRequiredString(data.stockType, 'Stock Type', 1);
   const currentQty = validateNonNegativeNumber(data.currentQty, 'Quantity');
-  
+
   const batchId = data.batchId ? validateId(data.batchId, 'Batch') : undefined;
   const shelfId = data.shelfId ? validateId(data.shelfId, 'Shelf') : undefined;
   const validMethods = ['FEFO', 'FIFO', 'Manual'] as const;
@@ -373,7 +374,7 @@ export const validateSupplierRequest = (data: Partial<any>): any => {
   const emailAddress = sanitizeString(data.emailAddress || data.email);
   const address = sanitizeString(data.address);
   const country = sanitizeString(data.country);
-  
+
   const validStatuses = ['active', 'inactive', 'suspended'] as const;
   const status = validateEnum(data.status, 'Status', validStatuses, false) || 'active';
 

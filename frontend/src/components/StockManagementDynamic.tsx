@@ -82,22 +82,20 @@ export function StockManagementDynamic({ onNavigate }: StockManagementProps) {
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab('batches')}
-            className={`pb-4 px-2 border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'batches'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            className={`pb-4 px-2 border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'batches'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
           >
             <Package className="w-5 h-5" />
             <span>الدفعات</span>
           </button>
           <button
             onClick={() => setActiveTab('stock-levels')}
-            className={`pb-4 px-2 border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'stock-levels'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            className={`pb-4 px-2 border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'stock-levels'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
           >
             <Archive className="w-5 h-5" />
             <span>مستويات المخزون</span>
@@ -166,52 +164,55 @@ function BatchesTab({
     pageSize: 100,
   });
 
-  const batches = batchesData?.data || [];
+  const batches = batchesData?.content || batchesData?.data || [];
 
-  // Get KPI stats from separate API queries (as per spec: page=1&pageSize=1 to get accurate totals)
-  const { data: activeBatchesData } = useBatches({ 
-    status: 'available', 
-    page: 0, 
-    pageSize: 1 
-  });
-  
-  const { data: nearExpiryData } = useBatches({ 
-    nearExpiry: true, 
-    page: 0, 
-    pageSize: 1 
-  });
-  
-  const { data: expiredData } = useBatches({ 
-    expired: true, 
-    page: 0, 
-    pageSize: 1 
-  });
+  // Calculate days to expiry for all batches
+  const calculateDaysToExpiry = (expiryDate: string): number => {
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    const diff = expiry.getTime() - today.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
 
-  // Get stats from separate queries (accurate backend counts)
+  // Calculate batches with expiry info
+  const batchesWithExpiry = batches.map(batch => ({
+    ...batch,
+    daysToExpiry: calculateDaysToExpiry(batch.expiryDate),
+  }));
+
+  // Calculate stats from the loaded batches data
+  // Note: We calculate from all loaded batches. For accurate totals across all pages,
+  // we would need backend support for nearExpiry and expired filters.
+  // For now, we calculate based on loaded data which is sufficient for the display.
+  const totalBatches = batchesData?.totalElements || batchesData?.total || batches.length;
+  const expiredCount = batchesWithExpiry.filter(b => b.daysToExpiry < 0).length;
+  const nearExpiryCount = batchesWithExpiry.filter(b => b.daysToExpiry >= 0 && b.daysToExpiry <= 90).length;
+  const activeCount = Math.max(0, totalBatches - expiredCount);
+
   const stats = [
-    { 
-      label: 'إجمالي الدفعات', 
-      value: batchesData?.total?.toString() || '0', 
-      icon: Package, 
-      color: 'blue' 
+    {
+      label: 'إجمالي الدفعات',
+      value: totalBatches.toString(),
+      icon: Package,
+      color: 'blue'
     },
-    { 
-      label: 'دفعات نشطة', 
-      value: activeBatchesData?.total?.toString() || '0', 
-      icon: TrendingUp, 
-      color: 'green' 
+    {
+      label: 'دفعات نشطة',
+      value: activeCount.toString(),
+      icon: TrendingUp,
+      color: 'green'
     },
-    { 
-      label: 'قريبة الانتهاء', 
-      value: nearExpiryData?.total?.toString() || '0', 
-      icon: AlertTriangle, 
-      color: 'yellow' 
+    {
+      label: 'قريبة الانتهاء',
+      value: nearExpiryCount.toString(),
+      icon: AlertTriangle,
+      color: 'yellow'
     },
-    { 
-      label: 'منتهية', 
-      value: expiredData?.total?.toString() || '0', 
-      icon: X, 
-      color: 'red' 
+    {
+      label: 'منتهية',
+      value: expiredCount.toString(),
+      icon: X,
+      color: 'red'
     }
   ];
 
@@ -219,21 +220,18 @@ function BatchesTab({
   const { data: productsData } = useProducts({ page: 0, pageSize: 100 });
   const { data: locations } = useLocations();
 
-  const products = productsData?.data || [];
+  const products = productsData?.content || productsData?.data || [];
 
   const stockTypeLabels: Record<StockType, string> = {
-    'store': 'مخزن',
-    'pharmacy': 'صيدلية',
-    'quarantine': 'حجر صحي',
-    'external': 'خارجي'
+    'available': 'متاح',
+    'near_expiry': 'قرب انتهاء الصلاحية',
+    'removed': 'محذوف',
+    'expired': 'منتهي الصلاحية',
+    'disposed': 'تم التخلص منه',
+    'damaged': 'تالف',
+    'quarantined': 'محجور'
   };
 
-  const calculateDaysToExpiry = (expiryDate: string): number => {
-    const expiry = new Date(expiryDate);
-    const today = new Date();
-    const diff = expiry.getTime() - today.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  };
 
   return (
     <>
@@ -246,15 +244,14 @@ function BatchesTab({
           >
             <div className="flex items-center justify-between mb-4">
               <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  stat.color === 'blue'
-                    ? 'bg-blue-100 text-blue-600'
-                    : stat.color === 'green'
+                className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color === 'blue'
+                  ? 'bg-blue-100 text-blue-600'
+                  : stat.color === 'green'
                     ? 'bg-green-100 text-green-600'
                     : stat.color === 'yellow'
-                    ? 'bg-yellow-100 text-yellow-600'
-                    : 'bg-red-100 text-red-600'
-                }`}
+                      ? 'bg-yellow-100 text-yellow-600'
+                      : 'bg-red-100 text-red-600'
+                  }`}
               >
                 <stat.icon className="w-6 h-6" />
               </div>
@@ -290,11 +287,10 @@ function BatchesTab({
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-colors ${
-                showFilters
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-colors ${showFilters
+                ? 'bg-blue-50 border-blue-200 text-blue-700'
+                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
             >
               <Filter className="w-5 h-5" />
               <span>فلاتر</span>
@@ -327,7 +323,7 @@ function BatchesTab({
                 >
                   <option value="">كل المواقع</option>
                   {locations?.map(location => (
-                    <option key={location.id} value={location.id}>{location.name}</option>
+                    <option key={location.id} value={location.id}>{location.locationName}</option>
                   ))}
                 </select>
               </div>
@@ -340,10 +336,10 @@ function BatchesTab({
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">كل الأنواع</option>
-                  <option value="store">مخزن</option>
-                  <option value="pharmacy">صيدلية</option>
-                  <option value="quarantine">حجر صحي</option>
-                  <option value="external">خارجي</option>
+                  <option value="available">متاح</option>
+                  <option value="near_expiry">قرب انتهاء الصلاحية</option>
+                  <option value="expired">منتهي الصلاحية</option>
+                  <option value="quarantined">محجور</option>
                 </select>
               </div>
 
@@ -419,13 +415,13 @@ function BatchesTab({
               <tbody className="divide-y divide-gray-100">
                 {batches.map((batch) => {
                   const daysToExpiry = calculateDaysToExpiry(batch.expiryDate);
-                  
+
                   return (
                     <BatchRow
                       key={batch.id}
                       batch={batch}
                       daysToExpiry={daysToExpiry}
-                      stockTypeLabel={stockTypeLabels[batch.stockType || 'store']}
+                      stockTypeLabel={stockTypeLabels[batch.stockType || 'available']}
                       onNavigate={onNavigate}
                       onEdit={onEdit}
                     />
@@ -452,7 +448,7 @@ function BatchRow({ batch, daysToExpiry, stockTypeLabel, onNavigate, onEdit }: B
   const deleteMutation = useDeleteBatch();
 
   const handleDelete = () => {
-    if (window.confirm(`هل أنت متأكد من حذف الدفعة "${batch.batchCode}"?`)) {
+    if (window.confirm(`هل أنت متأكد من حذف الدفعة "${batch.batchNumber}"?`)) {
       deleteMutation.mutate(batch.id);
     }
   };
@@ -475,17 +471,17 @@ function BatchRow({ batch, daysToExpiry, stockTypeLabel, onNavigate, onEdit }: B
       </td>
       <td className="px-6 py-4">
         <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-mono">
-          {batch.batchCode}
+          {batch.batchNumber}
         </span>
       </td>
       <td className="px-6 py-4">
         <span className="font-medium text-gray-900">
-          {batch.receivedQty.toLocaleString()}
+          {batch.quantity.toLocaleString()}
         </span>
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-1 text-gray-600">
-          <span>{formatCurrency(batch.unitPrice, 'SAR')}</span>
+          <span>{formatCurrency(batch.cost || 0, 'SAR')}</span>
         </div>
       </td>
       <td className="px-6 py-4">
@@ -495,13 +491,12 @@ function BatchRow({ batch, daysToExpiry, stockTypeLabel, onNavigate, onEdit }: B
             <span className="text-sm">{formatDate(batch.expiryDate)}</span>
           </div>
           <div
-            className={`text-xs mt-1 ${
-              daysToExpiry <= 90
-                ? 'text-red-600'
-                : daysToExpiry <= 180
+            className={`text-xs mt-1 ${daysToExpiry <= 90
+              ? 'text-red-600'
+              : daysToExpiry <= 180
                 ? 'text-yellow-600'
                 : 'text-green-600'
-            }`}
+              }`}
           >
             {daysToExpiry > 0 ? `${daysToExpiry} يوم متبقي` : 'منتهي'}
           </div>
@@ -509,13 +504,12 @@ function BatchRow({ batch, daysToExpiry, stockTypeLabel, onNavigate, onEdit }: B
       </td>
       <td className="px-6 py-4">
         <span
-          className={`px-3 py-1 rounded-lg text-sm ${
-            batch.status === 'available'
-              ? 'bg-green-100 text-green-700'
-              : batch.status === 'nearExpiry'
+          className={`px-3 py-1 rounded-lg text-sm ${batch.status === 'available'
+            ? 'bg-green-100 text-green-700'
+            : batch.status === 'nearExpiry'
               ? 'bg-yellow-100 text-yellow-700'
               : 'bg-red-100 text-red-700'
-          }`}
+            }`}
         >
           {stockTypeLabel}
         </span>
@@ -529,14 +523,14 @@ function BatchRow({ batch, daysToExpiry, stockTypeLabel, onNavigate, onEdit }: B
           >
             <Eye className="w-4 h-4" />
           </button>
-          <button 
+          <button
             onClick={() => onEdit(batch)}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title="تعديل"
           >
             <Edit className="w-4 h-4" />
           </button>
-          <button 
+          <button
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
@@ -655,27 +649,27 @@ interface StockLevelRowProps {
 
 function StockLevelRow({ level, dispatchMethodLabels }: StockLevelRowProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [newQty, setNewQty] = useState(level.currentQty.toString());
+  const [newQty, setNewQty] = useState(level.onHandQuantity.toString());
   const updateMutation = useUpdateStockLevel();
 
   const handleUpdate = () => {
     updateMutation.mutate({
       id: level.id,
       data: {
-        productId: level.productId,
-        locationId: level.locationId,
+        productId: Number(level.productId),
+        locationId: Number(level.locationId),
         stockType: level.stockType,
-        currentQty: parseInt(newQty),
-        dispenseMethod: level.dispenseMethod,
+        onHandQuantity: parseInt(newQty),
+        dispatchMethod: level.dispatchMethod,
       }
     }, {
       onSuccess: () => setIsEditing(false)
     });
   };
 
-  const statusLabel = level.status === 'normal' ? 'طبيعي' 
-    : level.status === 'low' ? 'منخفض' 
-    : 'حرج';
+  const statusLabel = level.status === 'normal' ? 'طبيعي'
+    : level.status === 'low' ? 'منخفض'
+      : 'حرج';
 
   return (
     <tr className="hover:bg-gray-50 transition-colors group">
@@ -717,7 +711,7 @@ function StockLevelRow({ level, dispatchMethodLabels }: StockLevelRowProps) {
             <button
               onClick={() => {
                 setIsEditing(false);
-                setNewQty(level.currentQty.toString());
+                setNewQty(level.onHandQuantity.toString());
               }}
               className="px-2 py-1 border border-gray-200 text-sm rounded hover:bg-gray-50"
             >
@@ -726,13 +720,13 @@ function StockLevelRow({ level, dispatchMethodLabels }: StockLevelRowProps) {
           </div>
         ) : (
           <span className="text-xl font-medium text-gray-900">
-            {level.currentQty.toLocaleString()}
+            {level.onHandQuantity.toLocaleString()}
           </span>
         )}
       </td>
       <td className="px-6 py-4">
         <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm">
-          {level.dispenseMethod ? dispatchMethodLabels[level.dispenseMethod] : 'غير محدد'}
+          {level.dispatchMethod ? dispatchMethodLabels[level.dispatchMethod as DispenseMethod] : 'غير محدد'}
         </span>
       </td>
       <td className="px-6 py-4">
@@ -740,13 +734,12 @@ function StockLevelRow({ level, dispatchMethodLabels }: StockLevelRowProps) {
       </td>
       <td className="px-6 py-4">
         <span
-          className={`px-3 py-1 rounded-lg text-sm flex items-center gap-2 w-fit ${
-            level.status === 'normal'
-              ? 'bg-green-100 text-green-700'
-              : level.status === 'low'
+          className={`px-3 py-1 rounded-lg text-sm flex items-center gap-2 w-fit ${level.status === 'normal'
+            ? 'bg-green-100 text-green-700'
+            : level.status === 'low'
               ? 'bg-yellow-100 text-yellow-700'
               : 'bg-red-100 text-red-700'
-          }`}
+            }`}
         >
           {level.status === 'critical' && <AlertTriangle className="w-4 h-4" />}
           {statusLabel}
@@ -754,7 +747,7 @@ function StockLevelRow({ level, dispatchMethodLabels }: StockLevelRowProps) {
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button 
+          <button
             onClick={() => setIsEditing(true)}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
@@ -775,42 +768,50 @@ function BatchDialog({
 }) {
   const createBatchMutation = useCreateBatch();
   const updateBatchMutation = useUpdateBatch();
-  
+
   const [formData, setFormData] = useState({
     productId: batch?.productId || '',
     locationId: batch?.locationId || '',
     supplierId: batch?.supplierId || '',
-    batchCode: batch?.batchCode || '',
-    receivedQty: batch?.receivedQty.toString() || '',
-    unitPrice: batch?.unitPrice.toString() || '',
-    manufactureDate: batch?.manufactureDate || '',
+    batchNumber: batch?.batchNumber || '',
+    quantity: batch?.quantity.toString() || '',
+    cost: batch?.cost?.toString() || '',
+    manufacturingDate: batch?.manufacturingDate || '',
     expiryDate: batch?.expiryDate || '',
-    receiptDate: batch?.receiptDate || '',
-    stockType: (batch?.stockType as StockType) || 'store',
+    receivingDate: batch?.receivingDate || '',
+    stockType: (batch?.stockType as StockType) || 'available',
   });
 
   // Fetch dropdowns
-  const { data: productsData } = useProducts({ page: 0, pageSize: 100 });
+  const { data: productsData, isLoading: productsLoading, error: productsError } = useProducts({ page: 0, pageSize: 100 });
   const { data: locations } = useLocations();
   const { data: suppliers } = useSuppliers({});
 
-  const products = productsData?.data || [];
+  const products = productsData?.content || productsData?.data || [];
+
+  console.log('Products data:', { productsData, products, productsLoading, productsError });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const data = {
-      productId: formData.productId,
-      locationId: formData.locationId,
-      supplierId: formData.supplierId || undefined,
-      batchCode: formData.batchCode,
-      receivedQty: parseInt(formData.receivedQty),
-      unitPrice: parseFloat(formData.unitPrice),
-      manufactureDate: formData.manufactureDate || undefined,
+
+    const trimmedBatchNumber = formData.batchNumber?.trim();
+
+    const data: any = {
+      productId: Number(formData.productId),
+      locationId: Number(formData.locationId),
+      quantity: parseInt(formData.quantity),
       expiryDate: formData.expiryDate,
-      receiptDate: formData.receiptDate || undefined,
       stockType: formData.stockType,
     };
+
+    // Only add optional fields if they have values
+    if (formData.supplierId) data.supplierId = Number(formData.supplierId);
+    if (trimmedBatchNumber && trimmedBatchNumber.length > 0) data.batchNumber = trimmedBatchNumber;
+    if (formData.cost) data.cost = parseInt(formData.cost);
+    if (formData.manufacturingDate) data.manufacturingDate = formData.manufacturingDate;
+    if (formData.receivingDate) data.receivingDate = formData.receivingDate;
+
+    console.log('Submitting batch data:', JSON.stringify(data, null, 2));
 
     try {
       if (batch) {
@@ -819,7 +820,13 @@ function BatchDialog({
         await createBatchMutation.mutateAsync(data);
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Batch creation error:', {
+        error,
+        response: error?.response,
+        data: error?.response?.data,
+        message: error?.message
+      });
       // Error handled by mutation
     }
   };
@@ -845,24 +852,28 @@ function BatchDialog({
               <label className="block text-sm text-gray-700 mb-2">
                 المنتج <span className="text-red-500">*</span>
               </label>
-              <select 
+              <select
                 value={formData.productId}
                 onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
                 required
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={productsLoading}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
               >
-                <option value="">اختر المنتج</option>
+                <option value="">{productsLoading ? 'جاري التحميل...' : productsError ? 'فشل تحميل المنتجات' : 'اختر المنتج'}</option>
                 {products.map(product => (
                   <option key={product.id} value={product.id}>{product.name}</option>
                 ))}
               </select>
+              {productsError && (
+                <p className="mt-1 text-sm text-red-600">فشل تحميل قائمة المنتجات</p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm text-gray-700 mb-2">
                 الموقع <span className="text-red-500">*</span>
               </label>
-              <select 
+              <select
                 value={formData.locationId}
                 onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
                 required
@@ -870,21 +881,20 @@ function BatchDialog({
               >
                 <option value="">اختر الموقع</option>
                 {locations?.map(location => (
-                  <option key={location.id} value={location.id}>{location.name}</option>
+                  <option key={location.id} value={location.id}>{location.locationName}</option>
                 ))}
               </select>
             </div>
 
             <div>
               <label className="block text-sm text-gray-700 mb-2">
-                رقم الدفعة <span className="text-red-500">*</span>
+                رقم الدفعة
               </label>
               <input
                 type="text"
-                value={formData.batchCode}
-                onChange={(e) => setFormData({ ...formData, batchCode: e.target.value })}
+                value={formData.batchNumber}
+                onChange={(e) => setFormData({ ...formData, batchNumber: e.target.value })}
                 placeholder="BTH-2024-XXX"
-                required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -895,8 +905,8 @@ function BatchDialog({
               </label>
               <input
                 type="number"
-                value={formData.receivedQty}
-                onChange={(e) => setFormData({ ...formData, receivedQty: e.target.value })}
+                value={formData.quantity}
+                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                 placeholder="0"
                 required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -908,8 +918,8 @@ function BatchDialog({
               <input
                 type="number"
                 step="0.01"
-                value={formData.unitPrice}
-                onChange={(e) => setFormData({ ...formData, unitPrice: e.target.value })}
+                value={formData.cost}
+                onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
                 placeholder="0.00"
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -917,14 +927,14 @@ function BatchDialog({
 
             <div>
               <label className="block text-sm text-gray-700 mb-2">المورد</label>
-              <select 
+              <select
                 value={formData.supplierId}
                 onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">اختر المورد</option>
                 {(suppliers || []).map((supplier: any) => (
-                  <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
+                  <option key={supplier.id} value={supplier.id}>{supplier.supplierName}</option>
                 ))}
               </select>
             </div>
@@ -933,8 +943,8 @@ function BatchDialog({
               <label className="block text-sm text-gray-700 mb-2">تاريخ التصنيع</label>
               <input
                 type="date"
-                value={formData.manufactureDate}
-                onChange={(e) => setFormData({ ...formData, manufactureDate: e.target.value })}
+                value={formData.manufacturingDate}
+                onChange={(e) => setFormData({ ...formData, manufacturingDate: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -956,23 +966,26 @@ function BatchDialog({
               <label className="block text-sm text-gray-700 mb-2">تاريخ الاستلام</label>
               <input
                 type="date"
-                value={formData.receiptDate}
-                onChange={(e) => setFormData({ ...formData, receiptDate: e.target.value })}
+                value={formData.receivingDate}
+                onChange={(e) => setFormData({ ...formData, receivingDate: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
               <label className="block text-sm text-gray-700 mb-2">نوع المخزون</label>
-              <select 
+              <select
                 value={formData.stockType}
                 onChange={(e) => setFormData({ ...formData, stockType: e.target.value as StockType })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="store">مخزن</option>
-                <option value="pharmacy">صيدلية</option>
-                <option value="quarantine">حجر صحي</option>
-                <option value="external">خارجي</option>
+                <option value="available">متاح</option>
+                <option value="near_expiry">قرب انتهاء الصلاحية</option>
+                <option value="removed">محذوف</option>
+                <option value="expired">منتهي الصلاحية</option>
+                <option value="disposed">تم التخلص منه</option>
+                <option value="damaged">تالف</option>
+                <option value="quarantined">محجور</option>
               </select>
             </div>
           </div>
@@ -986,7 +999,7 @@ function BatchDialog({
             >
               إلغاء
             </button>
-            <button 
+            <button
               type="submit"
               disabled={createBatchMutation.isPending || updateBatchMutation.isPending}
               className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"

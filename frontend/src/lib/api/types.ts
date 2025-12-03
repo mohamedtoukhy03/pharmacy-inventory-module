@@ -1,10 +1,15 @@
 // Common types
 export interface PaginatedResponse<T> {
-  data: T[];
-  page: number;
-  pageSize: number;
-  total: number;
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
   totalPages: number;
+  // Convenience properties for backward compatibility
+  data?: T[];
+  page?: number;
+  pageSize?: number;
+  total?: number;
 }
 
 export interface ApiError {
@@ -18,45 +23,38 @@ export interface Product {
   name: string;
   barcode?: string;
   sku?: string;
-  genericName?: string;
+  scientificName?: string;
   description?: string;
-  concentration?: string;
-  price: number;
+  strength?: string;
+  manufacturer?: string;
+  primaryCategory?: string;
+  cost?: number;
+  sellingPrice: number;
+  measurementUnit?: string;
   measurementUnitId?: string;
-  measurementUnitName?: string;
-  categoryId?: string;
-  categoryName?: string;
-  supplierId?: string;
-  supplierName?: string;
-  companyName?: string;
   isDrug: boolean;
-  isControlled: boolean;
+  controlledSubstance: boolean;
   reorderQty?: number;
-  minStock?: number;
-  minCycleStock?: number;
-  createdAt: string;
-  updatedAt: string;
+  minSafetyStock?: number;
+  minCyclicStock?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateProductRequest {
   name: string;
   barcode?: string;
   sku?: string;
-  genericName?: string;
+  scientificName?: string;
   description?: string;
-  concentration?: string;
-  price: number;
+  cost?: number;
+  sellingPrice?: number;
   measurementUnitId?: string;
-  categoryId?: string;
-  supplierId?: string;
   isDrug?: boolean;
-  isControlled?: boolean;
-  reorderQty?: number;
-  minStock?: number;
-  minCycleStock?: number;
+  controlledSubstance?: boolean;
 }
 
-export interface UpdateProductRequest extends Partial<CreateProductRequest> {}
+export interface UpdateProductRequest extends Partial<CreateProductRequest> { }
 
 // Category types
 export interface Category {
@@ -93,11 +91,8 @@ export interface Ingredient {
 
 export interface ProductIngredient {
   ingredientId: string;
-  name: string;
-  quantity: number;
-  measurementUnitId?: string;
-  measurementUnitName?: string;
-  isActive: boolean;
+  ingredientName: string;
+  amount: number;
 }
 
 export interface UpsertIngredientRequest {
@@ -115,31 +110,25 @@ export interface UpsertProductIngredientRequest {
 // Supplier types
 export interface Supplier {
   id: string;
-  name: string;
-  contact?: {
-    phone?: string;
-    email?: string;
-  };
-  address?: string;
+  supplierName: string;
+  supplierPhone?: string;
+  supplierEmail?: string;
   country?: string;
-  currencyCode?: string;
-  status?: 'active' | 'inactive' | 'suspended';
+  currency?: string;
+  activeStatus?: 'active' | 'inactive';
   rating?: number;
-  ordersCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface UpsertSupplierRequest {
-  name: string;
-  contact?: {
-    phone?: string;
-    email?: string;
-  };
-  address?: string;
+  supplierName: string;
+  supplierPhone?: string;
+  supplierEmail?: string;
   country?: string;
-  currencyCode?: string;
-  status?: 'active' | 'inactive' | 'suspended';
+  rating?: number;
+  currency?: string;
+  activeStatus?: 'active' | 'inactive';
 }
 
 // Measurement Unit types
@@ -163,17 +152,18 @@ export interface UpsertMeasurementUnitRequest {
 }
 
 // Location types
-export type LocationType = 'branch' | 'warehouse' | 'external' | 'clinic';
-export type LocationStatus = 'active' | 'inactive' | 'suspended';
+export type LocationType = 'branch' | 'warehouse' | 'external' | 'supplier' | 'quarantine' | 'clinic';
+export type LocationStatus = 'active' | 'inactive';
 
 export interface Location {
   id: string;
-  name: string;
-  status: LocationStatus;
-  type: LocationType;
+  locationName: string;
+  locationType: LocationType;
+  parentLocationId?: string;
+  parentLocationName?: string;
+  isDirectToMain?: boolean;
   address?: string;
-  isPrimary?: boolean;
-  parentId?: string;
+  status: LocationStatus;
   shelfCount?: number;
   productCount?: number;
   createdAt?: string;
@@ -181,29 +171,30 @@ export interface Location {
 }
 
 export interface UpsertLocationRequest {
-  name: string;
-  status: LocationStatus;
-  type: LocationType;
+  locationName: string;
+  locationType: LocationType;
+  parentLocationId?: number | null;
+  isDirectToMain?: boolean;
   address?: string;
-  isPrimary?: boolean;
-  parentId?: string;
+  status: LocationStatus;
 }
 
 // Shelf types
 export interface Shelf {
   id: string;
   locationId: string;
-  code: string;
-  capacity?: number;
+  onHandQty?: number;
+  dispatchMethod?: string;
 }
 
 export interface UpsertShelfRequest {
-  code: string;
-  capacity?: number;
+  locationId: number;
+  onHandQty?: number;
+  dispatchMethod?: string;
 }
 
 // Batch types
-export type StockType = 'store' | 'pharmacy' | 'quarantine' | 'external';
+export type StockType = 'available' | 'near_expiry' | 'removed' | 'expired' | 'disposed' | 'damaged' | 'quarantined';
 
 export interface Batch {
   id: string;
@@ -212,29 +203,35 @@ export interface Batch {
   locationId: string;
   locationName?: string;
   supplierId?: string;
-  batchCode: string;
-  receivedQty: number;
-  unitPrice: number;
-  manufactureDate?: string;
+  batchNumber: string;
+  quantity: number;
+  cost?: number;
+  manufacturingDate?: string;
   expiryDate: string;
-  receiptDate?: string;
+  receivingDate?: string;
+  alertDate?: string;
+  clearanceDate?: string;
   stockType?: StockType;
+  parentBatchId?: string;
   status?: 'available' | 'expired' | 'nearExpiry';
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface UpsertBatchRequest {
-  productId: string;
-  locationId: string;
-  supplierId?: string;
-  batchCode: string;
-  receivedQty: number;
-  unitPrice: number;
-  manufactureDate?: string;
-  expiryDate: string;
-  receiptDate?: string;
+  productId: number;
+  locationId: number;
   stockType?: StockType;
+  quantity: number;
+  batchNumber?: string;
+  cost?: number;
+  supplierId?: number;
+  manufacturingDate?: string;
+  expiryDate: string;
+  receivingDate?: string;
+  alertDate?: string;
+  clearanceDate?: string;
+  parentBatchId?: number;
 }
 
 // Batch Shelf Allocation types
@@ -246,8 +243,9 @@ export interface BatchShelfAllocation {
 }
 
 export interface UpsertBatchShelfAllocationRequest {
-  shelfId: string;
-  allocatedQty: number;
+  shelfId: number;
+  quantity: number;
+  threshold?: number;
 }
 
 // Stock Level types
@@ -257,26 +255,22 @@ export interface StockLevel {
   id: string;
   productId: string;
   productName?: string;
-  batchId?: string;
   locationId: string;
   locationName?: string;
-  shelfId?: string;
   stockType: string;
-  currentQty: number;
-  dispenseMethod?: DispenseMethod;
+  onHandQuantity: number;
+  dispatchMethod?: string;
   status?: 'normal' | 'low' | 'critical';
   reorderQty?: number;
   updatedAt?: string;
 }
 
 export interface UpsertStockLevelRequest {
-  productId: string;
-  batchId?: string;
-  locationId: string;
-  shelfId?: string;
-  stockType: string;
-  currentQty: number;
-  dispenseMethod?: DispenseMethod;
+  productId: number;
+  locationId: number;
+  stockType?: string;
+  onHandQuantity: number;
+  dispatchMethod?: string;
 }
 
 // Query parameter types
@@ -295,7 +289,7 @@ export interface ProductFilters extends PaginationParams, SortParams {
   search?: string;
   categoryId?: string;
   isDrug?: boolean;
-  isControlled?: boolean;
+  controlledSubstance?: boolean;
   supplierId?: string;
 }
 

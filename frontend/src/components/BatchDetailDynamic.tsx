@@ -16,7 +16,8 @@ import {
   useBatchAllocations,
   useCreateBatchAllocation,
   useDeleteBatchAllocation,
-  useDeleteBatch
+  useDeleteBatch,
+  useLocationShelves
 } from '../lib/query';
 import { formatCurrency, formatDate } from '../lib/utils';
 import type { BatchShelfAllocation } from '../lib/api/types';
@@ -31,14 +32,14 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
 
   // Fetch batch data
   const { data: batch, isLoading, error } = useBatch(batchId);
-  
+
   // Fetch shelf allocations
   const { data: allocations = [], isLoading: allocationsLoading } = useBatchAllocations(batchId);
 
   const deleteMutation = useDeleteBatch();
 
   const handleDeleteBatch = () => {
-    if (window.confirm(`هل أنت متأكد من حذف الدفعة "${batch?.batchCode}"?`)) {
+    if (window.confirm(`هل أنت متأكد من حذف الدفعة "${batch?.batchNumber}"?`)) {
       deleteMutation.mutate(batchId, {
         onSuccess: () => onNavigate('stock-management')
       });
@@ -82,12 +83,12 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
 
   const daysToExpiry = calculateDaysToExpiry(batch.expiryDate);
   const allocatedQty = allocations.reduce((sum, a) => sum + a.allocatedQty, 0);
-  const unallocatedQty = batch.receivedQty - allocatedQty;
+  const unallocatedQty = batch.quantity - allocatedQty;
 
   const stats = [
     {
       label: 'الكمية الإجمالية',
-      value: batch.receivedQty.toString(),
+      value: batch.quantity.toString(),
       icon: Package,
       color: 'blue'
     },
@@ -129,7 +130,7 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
           إدارة المخزون
         </button>
         <ChevronLeft className="w-4 h-4" />
-        <span className="text-gray-900">تفاصيل الدفعة {batch.batchCode}</span>
+        <span className="text-gray-900">تفاصيل الدفعة {batch.batchNumber}</span>
       </div>
 
       {/* Header */}
@@ -138,16 +139,15 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl">{batch.productName || 'منتج'}</h1>
             <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-mono">
-              {batch.batchCode}
+              {batch.batchNumber}
             </span>
             <span
-              className={`px-3 py-1 rounded-lg text-sm ${
-                batch.status === 'available'
-                  ? 'bg-green-100 text-green-700'
-                  : batch.status === 'nearExpiry'
+              className={`px-3 py-1 rounded-lg text-sm ${batch.status === 'available'
+                ? 'bg-green-100 text-green-700'
+                : batch.status === 'nearExpiry'
                   ? 'bg-yellow-100 text-yellow-700'
                   : 'bg-red-100 text-red-700'
-              }`}
+                }`}
             >
               {stockTypeLabels[batch.stockType || 'store']}
             </span>
@@ -176,17 +176,16 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
           >
             <div className="flex items-center justify-between mb-4">
               <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  stat.color === 'blue'
-                    ? 'bg-blue-100 text-blue-600'
-                    : stat.color === 'green'
+                className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color === 'blue'
+                  ? 'bg-blue-100 text-blue-600'
+                  : stat.color === 'green'
                     ? 'bg-green-100 text-green-600'
                     : stat.color === 'yellow'
-                    ? 'bg-yellow-100 text-yellow-600'
-                    : stat.color === 'purple'
-                    ? 'bg-purple-100 text-purple-600'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
+                      ? 'bg-yellow-100 text-yellow-600'
+                      : stat.color === 'purple'
+                        ? 'bg-purple-100 text-purple-600'
+                        : 'bg-gray-100 text-gray-600'
+                  }`}
               >
                 <stat.icon className="w-6 h-6" />
               </div>
@@ -240,10 +239,10 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
               </div>
               <span className="text-sm text-gray-600">التكلفة</span>
             </div>
-            <p className="font-medium text-gray-900">{formatCurrency(batch.unitPrice, 'SAR')}</p>
+            <p className="font-medium text-gray-900">{formatCurrency(batch.cost || 0, 'SAR')}</p>
           </div>
 
-          {batch.manufactureDate && (
+          {batch.manufacturingDate && (
             <div className="p-4 bg-gray-50 rounded-xl">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
@@ -251,7 +250,7 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
                 </div>
                 <span className="text-sm text-gray-600">تاريخ التصنيع</span>
               </div>
-              <p className="font-medium text-gray-900">{formatDate(batch.manufactureDate)}</p>
+              <p className="font-medium text-gray-900">{formatDate(batch.manufacturingDate)}</p>
             </div>
           )}
 
@@ -264,19 +263,18 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
             </div>
             <p className="font-medium text-gray-900">{formatDate(batch.expiryDate)}</p>
             <p
-              className={`text-xs mt-1 ${
-                daysToExpiry <= 90
-                  ? 'text-red-600'
-                  : daysToExpiry <= 180
+              className={`text-xs mt-1 ${daysToExpiry <= 90
+                ? 'text-red-600'
+                : daysToExpiry <= 180
                   ? 'text-yellow-600'
                   : 'text-green-600'
-              }`}
+                }`}
             >
               {daysToExpiry > 0 ? `${daysToExpiry} يوم متبقي` : 'منتهي'}
             </p>
           </div>
 
-          {batch.receiptDate && (
+          {batch.receivingDate && (
             <div className="p-4 bg-gray-50 rounded-xl">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
@@ -284,7 +282,7 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
                 </div>
                 <span className="text-sm text-gray-600">تاريخ الاستلام</span>
               </div>
-              <p className="font-medium text-gray-900">{formatDate(batch.receiptDate)}</p>
+              <p className="font-medium text-gray-900">{formatDate(batch.receivingDate)}</p>
             </div>
           )}
 
@@ -296,13 +294,12 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
               <span className="text-sm text-gray-600">نوع المخزون</span>
             </div>
             <span
-              className={`inline-flex px-3 py-1 rounded-lg text-sm ${
-                batch.status === 'available'
-                  ? 'bg-green-100 text-green-700'
-                  : batch.status === 'nearExpiry'
+              className={`inline-flex px-3 py-1 rounded-lg text-sm ${batch.status === 'available'
+                ? 'bg-green-100 text-green-700'
+                : batch.status === 'nearExpiry'
                   ? 'bg-yellow-100 text-yellow-700'
                   : 'bg-red-100 text-red-700'
-              }`}
+                }`}
             >
               {stockTypeLabels[batch.stockType || 'store']}
             </span>
@@ -316,7 +313,7 @@ export function BatchDetailDynamic({ batchId, onNavigate }: BatchDetailProps) {
               <span className="text-sm text-gray-600">الكمية الإجمالية</span>
             </div>
             <p className="text-2xl font-medium text-gray-900">
-              {batch.receivedQty.toLocaleString()}
+              {batch.quantity.toLocaleString()}
             </p>
           </div>
         </div>
@@ -447,38 +444,55 @@ interface AddShelfDialogProps {
 function AddShelfDialog({ batchId, unallocatedQty, onClose }: AddShelfDialogProps) {
   const [formData, setFormData] = useState({
     shelfId: '',
-    allocatedQty: '',
+    quantity: '',
   });
 
   const createMutation = useCreateBatchAllocation();
-  
-  // Fetch available locations/shelves - for now we'll use a simple text input
-  // In a full implementation, you'd fetch available shelves from GET /api/v1/shelves
+
+  // Get batch to know its location
+  const { data: batch } = useBatch(batchId);
+
+  // Fetch available shelves from the batch's location
+  const { data: shelves = [] } = useLocationShelves(batch?.locationId || '');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (parseInt(formData.allocatedQty) > unallocatedQty) {
+
+    if (!formData.shelfId) {
+      alert('الرجاء اختيار رف');
+      return;
+    }
+
+    const quantity = parseInt(formData.quantity);
+
+    if (isNaN(quantity) || quantity <= 0) {
+      alert('الرجاء إدخال كمية صحيحة');
+      return;
+    }
+
+    if (quantity > unallocatedQty) {
       alert(`الكمية المتاحة للتخصيص: ${unallocatedQty}`);
       return;
     }
 
-    try {
-      await createMutation.mutateAsync({
+    createMutation.mutate(
+      {
         batchId,
         data: {
-          shelfId: formData.shelfId,
-          allocatedQty: parseInt(formData.allocatedQty),
+          shelfId: parseInt(formData.shelfId),
+          quantity: quantity,
         }
-      });
-      onClose();
-    } catch (error) {
-      // Error handled by mutation
-    }
+      },
+      {
+        onSuccess: () => {
+          onClose();
+        }
+      }
+    );
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items- justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -495,16 +509,26 @@ function AddShelfDialog({ batchId, unallocatedQty, onClose }: AddShelfDialogProp
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm text-gray-700 mb-2">
-              معرف الرف <span className="text-red-500">*</span>
+              اختر الرف <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <select
               value={formData.shelfId}
               onChange={(e) => setFormData({ ...formData, shelfId: e.target.value })}
-              placeholder="أدخل معرف الرف"
               required
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            >
+              <option value="">اختر رف من القائمة</option>
+              {shelves.map((shelf: any) => (
+                <option key={shelf.id} value={shelf.id}>
+                  رف #{shelf.id} {shelf.dispatchMethod ? `(${shelf.dispatchMethod})` : ''}
+                </option>
+              ))}
+            </select>
+            {shelves.length === 0 && (
+              <p className="text-xs text-yellow-600 mt-1">
+                لا توجد أرفف في هذا الموقع. يجب إنشاء رف أولاً في إدارة المواقع.
+              </p>
+            )}
           </div>
 
           <div>
@@ -513,15 +537,16 @@ function AddShelfDialog({ batchId, unallocatedQty, onClose }: AddShelfDialogProp
             </label>
             <input
               type="number"
-              value={formData.allocatedQty}
-              onChange={(e) => setFormData({ ...formData, allocatedQty: e.target.value })}
+              value={formData.quantity}
+              onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
               placeholder="أدخل الكمية"
+              min="1"
               max={unallocatedQty}
               required
               className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-xs text-gray-500 mt-1">
-              الكمية المتبقية من الدفعة: {unallocatedQty} وحدة
+              الكمية المتبقية من الدفعة: {unallocatedQty.toLocaleString()} وحدة
             </p>
           </div>
 
@@ -530,13 +555,14 @@ function AddShelfDialog({ batchId, unallocatedQty, onClose }: AddShelfDialogProp
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              disabled={createMutation.isPending}
+              className="px-6 py-2.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               إلغاء
             </button>
             <button
               type="submit"
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || shelves.length === 0}
               className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               {createMutation.isPending ? 'جاري الإضافة...' : 'إضافة الرف'}

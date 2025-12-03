@@ -5,5 +5,6 @@ public enum LocationType {
     warehouse,
     external,
     supplier,
-    quarantine
+    quarantine,
+    clinic
 }
